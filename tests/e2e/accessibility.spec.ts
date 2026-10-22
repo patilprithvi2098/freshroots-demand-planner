@@ -1,6 +1,6 @@
 import { expect, test, type Page } from "@playwright/test";
 import AxeBuilder from "@axe-core/playwright";
-import { authFile, PUBLIC_PAGES, ROLE_PAGES } from "./pages";
+import { authFile, hasSession, PUBLIC_PAGES, ROLE_PAGES } from "./pages";
 
 async function audit(page: Page, name: string) {
   await page.waitForLoadState("networkidle");
@@ -27,6 +27,7 @@ for (const p of ROLE_PAGES) {
   test.describe(() => {
     test.use({ storageState: authFile(p.role) });
     test(`accessibility: ${p.name} (${p.role})`, async ({ page }) => {
+      test.skip(!hasSession(p.role), `No ${p.role} session`);
       await page.goto(p.path);
       await audit(page, p.name);
     });
@@ -36,6 +37,7 @@ for (const p of ROLE_PAGES) {
 test.describe(() => {
   test.use({ storageState: authFile("planner") });
   test("accessibility: queue side panel and override dialog", async ({ page }) => {
+    test.skip(!hasSession("planner"), "No planner session");
     await page.goto("/queue?all=1");
     const first = page.getByRole("button", { name: /^Open details for / }).first();
     test.skip((await first.count()) === 0, "No run in the database yet");

@@ -4,12 +4,12 @@ import { execFileSync } from "node:child_process";
 import { readFileSync } from "node:fs";
 import path from "node:path";
 import { expect, test, type Page } from "@playwright/test";
-import { authFile } from "./auth";
+import { authFile, hasSession } from "./auth";
 import { countWrites, guardDialogs } from "./helpers";
 
 const allowed = process.env.E2E_ALLOW_WRITES === "1" && !!process.env.E2E_SUPABASE_REF;
 test.describe.configure({ mode: "serial" });
-test.skip(!allowed, "Set E2E_ALLOW_WRITES=1 and E2E_SUPABASE_REF to run the write workflow on a dev project.");
+test.skip(!allowed || !hasSession("planner"), "Set E2E_ALLOW_WRITES=1 and E2E_SUPABASE_REF to run the write workflow on a dev project.");
 
 const sample = (f: string) => path.join(process.cwd(), "sample-data", f);
 const zone = (page: Page, label: string) => page.locator("section").filter({ has: page.getByRole("heading", { name: label, exact: true }) });

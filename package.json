@@ -14,7 +14,8 @@
     "invite": "tsx --env-file=.env.local scripts/invite-user.ts",
     "dev-link": "tsx --env-file=.env.local scripts/dev-login-link.ts",
     "test:e2e": "playwright test",
-    "test:e2e:report": "playwright show-report"
+    "test:e2e:report": "playwright show-report",
+    "delete-user": "tsx --env-file=.env.local scripts/delete-user.ts"
   },
   "dependencies": {
     "@anthropic-ai/sdk": "^1.1.0",

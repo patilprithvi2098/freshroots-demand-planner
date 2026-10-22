@@ -20,12 +20,13 @@ export default defineConfig({
   // Runs in the installed Google Chrome (channel "chrome"), not Playwright's bundled engines.
   // Each run gets a clean temporary profile, so tests never touch real cookies, history or logins.
   projects: [
-    { name: "setup", testMatch: /auth\.setup\.ts/, use: chrome },
+    { name: "setup", testMatch: /auth\.setup\.ts/, use: chrome, teardown: "teardown" },
+    { name: "teardown", testMatch: /auth\.teardown\.ts/ },
     // Writes to the database. Runs only when E2E_ALLOW_WRITES=1 and the Supabase project matches E2E_SUPABASE_REF.
     { name: "workflow", testMatch: /workflow\.spec\.ts/, use: chrome, dependencies: ["setup"] },
     {
       name: "chrome",
-      testIgnore: [/workflow\.spec\.ts/, /auth\.setup\.ts/],
+      testIgnore: [/workflow\.spec\.ts/, /auth\.(setup|teardown)\.ts/],
       use: chrome,
       dependencies: ["setup", "workflow"],
     },

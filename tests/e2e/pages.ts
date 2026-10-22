@@ -1,4 +1,4 @@
-import { authFile } from "./auth";
+import { authFile, hasSession } from "./auth";
 
 export const ROLE_PAGES = [
   { role: "planner", path: "/queue", name: "queue" },
@@ -13,4 +13,4 @@ export const ROLE_PAGES = [
 
 export const PUBLIC_PAGES = [{ path: "/login", name: "login" }] as const;
 
-export { authFile };
+export { authFile, hasSession };

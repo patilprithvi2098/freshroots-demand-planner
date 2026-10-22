@@ -26,7 +26,7 @@ The AI never sets or changes a quantity. If it fails or the spend cap is hit, th
 ## Stack
 
 - Next.js 15 (App Router), TypeScript strict, Tailwind CSS 4
-- Supabase Postgres with row level security, Supabase Auth (email magic links)
+- Supabase Postgres with row level security, Supabase Auth (username and password)
 - Rules engine: pure TypeScript in `lib/rules/`, no I/O, tested with Vitest
 - Validation: Zod (CSV rows, server actions, AI output, rule config)
 - AI: Anthropic Messages API, `claude-sonnet-5-5`, server-side only
@@ -41,13 +41,16 @@ cp .env.example .env.local   # then fill in the values below
 Apply the migrations in `supabase/migrations/` to your Supabase project, in order (SQL editor or `supabase db push`).
 
 ```bash
-npm run seed                                   # load the five sample files from sample-data/
-npm run invite -- raghav@freshroots.in planner # create users (planner | procurement | viewer)
-npm run dev                                    # http://localhost:3000
+npm run seed                                            # load the five sample files from sample-data/
+NEW_USER_PASSWORD='…' npm run invite -- raghav planner  # create or update a user (planner | procurement | viewer)
+npm run delete-user -- raghav                           # remove a user
+npm run dev                                             # http://localhost:3000
 ```
 
-Users sign in with a magic link. The login screen never creates accounts; only `npm run invite`
-(service role) can create users or change roles.
+Users sign in with a **username and password**. Supabase Auth stores the password; each username maps to an
+internal address on the reserved `users.freshroots.invalid` domain, which can never receive mail. The login
+screen never creates accounts; only `npm run invite` (service role) can create users or change roles.
+Passwords are passed through the `NEW_USER_PASSWORD` environment variable and are never stored in the repo.
 
 ### Environment variables
 
@@ -59,7 +62,7 @@ Users sign in with a magic link. The login screen never creates accounts; only `
 | `ANTHROPIC_API_KEY` | server only | Optional. Without it, exceptions show "Rationale unavailable" |
 | `AI_MONTHLY_SPEND_CAP_USD` | server | Default 20. When reached, runs continue without rationales |
 | `MAX_RUNS_PER_DAY` | server | Default 10 |
-| `NEXT_PUBLIC_SITE_URL` | browser | Base URL for magic-link redirects |
+| `NEXT_PUBLIC_SITE_URL` | browser | Public base URL of the app |
 | `CRON_SECRET` | server | Reserved for Phase 3 scheduled runs |
 
 ## Tests
@@ -77,7 +80,7 @@ every flag, quantity, exception and weeks-of-cover value from the specification.
 ### Browser tests (Playwright, installed Google Chrome)
 
 ```bash
-npm run test:e2e                     # login, accessibility (WCAG 2.1 AA), layout at 375px and desktop
+E2E_PASSWORD='…' npm run test:e2e    # login, accessibility (WCAG 2.1 AA), layout at 375px and desktop
 SCREENS=1 npx playwright test tests/e2e/screens.spec.ts --project=chrome   # screenshots for design review
 ```
 
@@ -85,12 +88,13 @@ SCREENS=1 npx playwright test tests/e2e/screens.spec.ts --project=chrome   # scr
 database**, so it only runs on a development project:
 
 ```bash
-E2E_ALLOW_WRITES=1 E2E_SUPABASE_REF=<dev-project-ref> npm run test:e2e
+E2E_PASSWORD='…' E2E_ALLOW_WRITES=1 E2E_SUPABASE_REF=<dev-project-ref> npm run test:e2e
 ```
 
 It first clears runs, decisions, uploads and extra rule versions in that project (`scripts/e2e-reset.ts`
-refuses to run if the URL does not match the ref). Sign-in uses `scripts/dev-login-link.ts`, which only
-works when `NEXT_PUBLIC_SITE_URL` is localhost.
+refuses to run if the URL does not match the ref). The planner signs in through the login form with
+`E2E_USERNAME` (default `raghav`) and `E2E_PASSWORD`. Procurement and viewer tests create temporary users with
+random passwords and delete them afterwards.
 
 CI (`.github/workflows/ci.yml`) runs lint, type check and Vitest on every pull request.
 
@@ -110,6 +114,9 @@ CI (`.github/workflows/ci.yml`) runs lint, type check and Vitest on every pull r
 
 ## Decisions and deviations from the spec
 
+- **Username and password sign-in** instead of email magic links, at the product owner's request. Only one
+  account (`raghav`, planner) exists for now; add procurement and viewer users with `npm run invite`.
+
 - **No `temperature: 0.2`.** Claude Sonnet 5.5 rejects non-default sampling parameters. The call uses
   thinking type `between_tools` and effort `low`, so the 300 output tokens go to the answer. Structured
   output (JSON schema) is enforced by the API and checked again with Zod.
@@ -127,5 +134,6 @@ CI (`.github/workflows/ci.yml`) runs lint, type check and Vitest on every pull r
 - **Viewer dashboard** is computed on the server with the service key after a role check, because the
   viewer role has no table access under RLS.
 - **Two extra rule parameters** are configurable: `max_missing_weeks` (2) and `max_qty_multiple` (3).
+- **Deployment:** https://freshroots-demand-planner.vercel.app (Vercel, production).
 - **Phase 3** (scheduled runs, SFTP/Zoho ingestion, four-week outcome capture job) is not built. The
   `outcomes` table and dashboard are ready for it; until then loss metrics show "No four-week outcomes recorded yet".

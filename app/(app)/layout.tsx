@@ -1,6 +1,7 @@
 import { redirect } from "next/navigation";
 import { getSessionProfile, type Role } from "@/lib/auth";
 import { NavLinks } from "@/components/NavLinks";
+import { displayName } from "@/lib/usernames";
 
 const NAV: { href: string; label: string; roles: Role[] }[] = [
   { href: "/queue", label: "Review queue", roles: ["planner"] },
@@ -27,7 +28,7 @@ export default async function AppLayout({ children }: { children: React.ReactNod
           <NavLinks links={links} />
           <div className="ml-auto flex items-center gap-3 text-sm text-neutral-600">
             <span className="hidden sm:inline">
-              {session.email} · <span className="capitalize">{session.role}</span>
+              {displayName(session.email)} · <span className="capitalize">{session.role}</span>
             </span>
             <form action="/auth/signout" method="post">
               <button className="rounded px-2 py-1 hover:bg-neutral-100 focus-visible:outline-2 focus-visible:outline-brand-700">Sign out</button>

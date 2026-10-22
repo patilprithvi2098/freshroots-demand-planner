@@ -1,5 +1,5 @@
 import { test } from "@playwright/test";
-import { authFile, PUBLIC_PAGES, ROLE_PAGES } from "./pages";
+import { authFile, hasSession, PUBLIC_PAGES, ROLE_PAGES } from "./pages";
 
 // Full-page screenshots for a visual design review. Run on demand:
 //   npx playwright test tests/e2e/screens.spec.ts --project=chrome
@@ -12,6 +12,7 @@ for (const p of [...PUBLIC_PAGES.map((x) => ({ ...x, role: null })), ...ROLE_PAG
     for (const w of WIDTHS) {
       test(`screenshot: ${p.name} at ${w}px`, async ({ page }) => {
         test.skip(!run, "Set SCREENS=1 to capture screenshots");
+        test.skip(!!p.role && !hasSession(p.role), "No session for this role");
         await page.setViewportSize({ width: w, height: 900 });
         await page.goto(p.path);
         await page.waitForLoadState("networkidle");
