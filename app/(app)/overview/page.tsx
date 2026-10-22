@@ -73,7 +73,7 @@ export default async function OverviewPage() {
               href="/queue?view=judgement"
               tone="violet"
               icon={<Sparkles className="h-5 w-5" />}
-              label="Need your judgement"
+              label="Needs judgement"
               value={judgement.length}
               unit="SKUs"
               detail={judgement.length ? "Rules disagree or don't fit. Explanation included" : "Every SKU fits the rules"}
@@ -161,8 +161,8 @@ function CycleCard({ p, reviewCount, decided, releasable, released }: { p: Plann
   const steps = [
     { label: "Fresh data", done: dataReady && !stale, note: stale ? "Stock file is old" : dataReady ? "SAP files loaded" : "Upload SAP files" },
     { label: "Run the rules", done: ran, note: ran ? `Ran ${fmtDateTime(p.run!.run_date)}` : p.newDataSinceRun ? "New data waiting" : "Not run yet" },
-    { label: "Review", done: reviewed, note: ran ? `${decided} of ${reviewCount} decided` : "–" },
-    { label: "Send to procurement", done, note: released ? `${released} sent` : releasable ? `${releasable} ready to send` : "–" },
+    { label: "Review", done: reviewed, note: ran ? `${decided} of ${reviewCount} decided` : "After the run" },
+    { label: "Send to procurement", done, note: released ? `${released} sent` : releasable ? `${releasable} ready to send` : "After review" },
   ];
   const current = steps.findIndex((s) => !s.done);
 
@@ -230,19 +230,19 @@ function Tile({ href, tone, icon, label, value, unit, detail }: { href: string; 
   return (
     <Link
       href={href}
-      className="group rounded-2xl border border-neutral-200 bg-white p-4 shadow-sm transition hover:border-neutral-300 hover:shadow focus-visible:outline-2 focus-visible:outline-emerald-700"
+      className={`group flex flex-col rounded-2xl border bg-white p-4 shadow-sm transition hover:border-neutral-300 hover:shadow focus-visible:outline-2 focus-visible:outline-emerald-700 ${value ? "border-neutral-200" : "border-neutral-200 opacity-80"}`}
     >
-      <div className="flex items-center justify-between">
-        <span className={`flex h-9 w-9 items-center justify-center rounded-lg ${TONES[tone]}`} aria-hidden>
+      <span className="flex items-center gap-2">
+        <span className={`flex h-7 w-7 shrink-0 items-center justify-center rounded-md ${TONES[tone]} [&>svg]:h-4 [&>svg]:w-4`} aria-hidden>
           {icon}
         </span>
-        <ArrowRight aria-hidden className="h-4 w-4 text-neutral-400 transition group-hover:translate-x-0.5 group-hover:text-neutral-700" />
-      </div>
-      <p className="mt-3 text-sm font-medium text-neutral-700">{label}</p>
-      <p className="tabular text-3xl font-semibold tracking-tight">
+        <span className="text-sm font-medium text-neutral-800">{label}</span>
+        <ArrowRight aria-hidden className="ml-auto h-4 w-4 text-neutral-400 transition group-hover:translate-x-0.5 group-hover:text-neutral-700" />
+      </span>
+      <span className="tabular mt-2 text-3xl font-semibold tracking-tight">
         {value} <span className="text-base font-normal text-neutral-600">{unit}</span>
-      </p>
-      <p className="mt-1 text-xs text-neutral-700">{detail}</p>
+      </span>
+      <span className="mt-0.5 text-xs leading-snug text-neutral-700">{detail}</span>
     </Link>
   );
 }

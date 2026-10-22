@@ -3,7 +3,7 @@
 
 import { useState } from "react";
 
-const SIZES = { xs: "h-9 w-9", sm: "h-11 w-11", md: "h-14 w-14", lg: "h-24 w-24" };
+const SIZES = { xs: "h-9 w-9", sm: "h-11 w-11", md: "h-14 w-14", lg: "h-24 w-24", hero: "h-16 w-16 sm:h-24 sm:w-24" };
 
 /** Pack shot for a SKU (public/skus/<SKU_ID>.svg), with a branded placeholder if it is missing. */
 export function SkuImage({ skuId, size = "sm" }: { skuId: string; name?: string; size?: keyof typeof SIZES }) {

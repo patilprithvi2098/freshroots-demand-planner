@@ -23,22 +23,52 @@ type FieldKey =
   | "max_missing_weeks"
   | "max_qty_multiple";
 
-const FIELDS: { key: FieldKey; label: string; help: string; step?: string }[] = [
-  { key: "festival_uplift_pct", label: "Festival uplift (%)", help: "Added to average demand in festival months." },
-  { key: "avg_window_weeks", label: "Average window (weeks)", help: "Base average and minimum history." },
-  { key: "trend_window_weeks", label: "Trend window (weeks)", help: "Recent window compared with the average." },
-  { key: "trend_threshold_pct", label: "High-demand threshold (%)", help: "Trend above this sets high demand." },
-  { key: "trend_reorder_multiplier", label: "High-demand reorder multiplier", help: "Times the standard quantity.", step: "0.1" },
-  { key: "low_min", label: "Low perishability: minimum cover (weeks)", help: "Below this is stockout risk.", step: "0.5" },
-  { key: "low_max", label: "Low perishability: maximum cover (weeks)", help: "Above this is overstock risk.", step: "0.5" },
-  { key: "high_min", label: "High perishability: minimum cover (weeks)", help: "Below this is stockout risk.", step: "0.5" },
-  { key: "high_max", label: "High perishability: maximum cover (weeks)", help: "Above this is overstock risk.", step: "0.5" },
-  { key: "new_launch_weeks", label: "New launch window (weeks)", help: "Launched within this goes to manual review." },
-  { key: "stale_inventory_days", label: "Stale inventory (days)", help: "Older stock needs confirmation before a run." },
-  { key: "distributor_share_shift_pp", label: "Distributor shift (percentage points)", help: "Share change that marks an exception." },
-  { key: "max_missing_weeks", label: "Allowed missing weeks", help: "More missing weeks than this marks data gaps." },
-  { key: "max_qty_multiple", label: "Quantity ceiling (× standard)", help: "Recommended quantities never exceed this.", step: "0.5" },
-  { key: "max_ai_calls_per_run", label: "AI calls per run (max 80)", help: "Exceptions beyond this get no rationale." },
+type Field = { key: FieldKey; label: string; help: string; step?: string };
+
+const GROUPS: { title: string; hint: string; fields: Field[] }[] = [
+  {
+    title: "Demand",
+    hint: "How the rules read sales.",
+    fields: [
+      { key: "avg_window_weeks", label: "Average window (weeks)", help: "Base average and minimum history." },
+      { key: "trend_window_weeks", label: "Trend window (weeks)", help: "Recent weeks compared with the average." },
+      { key: "trend_threshold_pct", label: "High-demand threshold (%)", help: "A trend above this sets high demand." },
+      { key: "festival_uplift_pct", label: "Festival uplift (%)", help: "Added to demand in festival months." },
+    ],
+  },
+  {
+    title: "Safe stock range (weeks of cover)",
+    hint: "Below the minimum is stockout risk; above the maximum is overstock.",
+    fields: [
+      { key: "low_min", label: "Long shelf life: minimum", help: "Weeks", step: "0.5" },
+      { key: "low_max", label: "Long shelf life: maximum", help: "Weeks", step: "0.5" },
+      { key: "high_min", label: "Perishable: minimum", help: "Weeks", step: "0.5" },
+      { key: "high_max", label: "Perishable: maximum", help: "Weeks", step: "0.5" },
+    ],
+  },
+  {
+    title: "Order size",
+    hint: "How the suggested quantity is set.",
+    fields: [
+      { key: "trend_reorder_multiplier", label: "High-demand multiplier", help: "Times the standard reorder quantity.", step: "0.1" },
+      { key: "max_qty_multiple", label: "Quantity ceiling (× standard)", help: "Suggestions never exceed this.", step: "0.5" },
+    ],
+  },
+  {
+    title: "Checks that send a SKU to judgement",
+    hint: "When the rules alone are not enough.",
+    fields: [
+      { key: "new_launch_weeks", label: "New launch window (weeks)", help: "Launched within this goes to judgement." },
+      { key: "max_missing_weeks", label: "Allowed missing weeks", help: "More gaps than this marks data gaps." },
+      { key: "distributor_share_shift_pp", label: "Distributor shift (points)", help: "Share change that needs a look." },
+      { key: "stale_inventory_days", label: "Old stock file (days)", help: "Older stock needs confirmation before a run." },
+    ],
+  },
+  {
+    title: "AI explanations",
+    hint: "Claude explains judgement SKUs only; it never sets quantities.",
+    fields: [{ key: "max_ai_calls_per_run", label: "Explanations per run (max 80)", help: "SKUs beyond this use the rule-based explanation." }],
+  },
 ];
 
 function toFields(p: RuleParams): Record<FieldKey, string> {
@@ -96,8 +126,12 @@ export function ConfigForm({ params }: { params: RuleParams }) {
 
   return (
     <form onSubmit={submit} className="space-y-4">
-      <div className="grid gap-4 sm:grid-cols-2">
-        {FIELDS.map((f) => (
+      {GROUPS.map((g) => (
+        <fieldset key={g.title} className="rounded-xl border border-neutral-200 p-4">
+          <legend className="px-1 text-sm font-semibold">{g.title}</legend>
+          <p className="mb-3 text-xs text-neutral-600">{g.hint}</p>
+          <div className="grid gap-4 sm:grid-cols-2">
+        {g.fields.map((f) => (
           <label key={f.key} className="block text-sm">
             <span className="mb-1 block font-medium">{f.label}</span>
             <input
@@ -112,7 +146,9 @@ export function ConfigForm({ params }: { params: RuleParams }) {
             <span className="mt-1 block text-xs text-neutral-600">{f.help}</span>
           </label>
         ))}
-      </div>
+          </div>
+        </fieldset>
+      ))}
       <div aria-live="polite">
         {msg ? (
           <p role={msg.ok ? "status" : "alert"} className={`text-sm ${msg.ok ? "text-brand-800" : "text-red-700"}`}>

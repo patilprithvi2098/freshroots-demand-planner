@@ -1,11 +1,35 @@
 import { requireRole } from "@/lib/auth";
-import { FILE_TYPES } from "@/lib/csv/loaders";
+import { FILE_TYPES, type FileType } from "@/lib/csv/loaders";
 import { createClient } from "@/lib/supabase/server";
 import { loadPlanning } from "@/lib/services/overview";
 import { fmtDate, fmtDateTime, fmtInt } from "@/lib/format";
 import { Banner, EmptyState } from "@/components/ui";
 import { RunNowButton } from "./RunNowButton";
 import { UploadZone } from "./UploadZone";
+
+const GROUPS: { key: string; title: string; hint: string; types: FileType[]; compact: boolean }[] = [
+  {
+    key: "cycle",
+    title: "Every planning cycle",
+    hint: "Upload the latest SAP sales and stock exports each Tuesday and Friday before running planning.",
+    types: ["weekly_sales", "current_inventory"],
+    compact: false,
+  },
+  {
+    key: "masters",
+    title: "When something changes",
+    hint: "New SKUs, new distributors, or next year's festival months.",
+    types: ["sku_master", "distributor_master", "calendar"],
+    compact: true,
+  },
+  {
+    key: "optional",
+    title: "Optional",
+    hint: "Open POs from Zoho add stock on order to cover. Past decisions let the backtest measure agreement.",
+    types: ["open_purchase_orders", "historical_decisions"],
+    compact: true,
+  },
+];
 
 const FEATURE_LABEL: Record<string, string> = {
   unit_price: "Unit prices (rank by rupee value)",
@@ -57,26 +81,31 @@ export default async function DataPage() {
         </Banner>
       ) : null}
 
-      <section aria-labelledby="files-h">
-        <h2 id="files-h" className="mb-3 font-semibold">
-          Files for this cycle
-        </h2>
-        <div className="grid gap-4 lg:grid-cols-2">
-          {FILE_TYPES.map((f) => {
-            const last = lastByType.get(f.type);
-            const source = p.sources.find((s) => s.key === f.type);
-            return (
-              <UploadZone
-                key={f.type}
-                fileType={f.type}
-                label={f.label}
-                status={source?.detail ?? null}
-                lastUpload={last ? `${last.filename} · ${fmtInt(last.row_count)} rows · ${fmtDateTime(last.created_at)}` : null}
-              />
-            );
-          })}
-        </div>
-      </section>
+      {GROUPS.map((g) => (
+        <section key={g.key} aria-labelledby={`grp-${g.key}`} className="mb-8">
+          <h2 id={`grp-${g.key}`} className="font-semibold">
+            {g.title}
+          </h2>
+          <p className="mb-3 text-sm text-neutral-600">{g.hint}</p>
+          <div className={g.compact ? "grid gap-3 lg:grid-cols-2" : "grid gap-4 lg:grid-cols-2"}>
+            {g.types.map((type) => {
+              const f = FILE_TYPES.find((x) => x.type === type)!;
+              const last = lastByType.get(type);
+              const source = p.sources.find((s) => s.key === type);
+              return (
+                <UploadZone
+                  key={type}
+                  fileType={type}
+                  label={f.label.replace(/ \(optional.*\)$/, "")}
+                  compact={g.compact}
+                  status={source?.detail ?? null}
+                  lastUpload={last ? `${last.filename} · ${fmtInt(last.row_count)} rows · ${fmtDateTime(last.created_at)}` : null}
+                />
+              );
+            })}
+          </div>
+        </section>
+      ))}
 
       {features ? (
         <section className="mt-8 rounded-2xl border border-neutral-200 bg-white p-5 shadow-sm" aria-labelledby="feat-h">

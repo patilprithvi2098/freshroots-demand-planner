@@ -63,7 +63,7 @@ test.describe("planner", () => {
     await page.reload();
     await expect(page.getByRole("link", { name: /Running low\s*5\s*SKUs/ })).toBeVisible();
     await expect(page.getByRole("link", { name: /Too much stock\s*2\s*SKUs/ })).toBeVisible();
-    await expect(page.getByRole("link", { name: /Need your judgement\s*2\s*SKUs/ })).toBeVisible();
+    await expect(page.getByRole("link", { name: /Needs judgement\s*2\s*SKUs/ })).toBeVisible();
     await expect(page.getByText("Festival month: demand raised 25% before checking stock")).toBeVisible();
     await expect(page.getByRole("link", { name: "Review 7 SKUs" })).toBeVisible();
 

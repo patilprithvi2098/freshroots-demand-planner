@@ -7,6 +7,7 @@ import { CoverGauge } from "@/components/charts/CoverGauge";
 import { SalesBars } from "@/components/charts/SalesBars";
 import { btn } from "@/components/ui";
 import { EXCEPTION_LABEL, fmt1, fmtInt, fmtRupees } from "@/lib/format";
+import { ruleExplanation } from "@/lib/exceptionText";
 import type { SkuRow } from "@/lib/skuRow";
 import { DecisionBadge, JudgementBadge, SituationBadge, TrendValue } from "./labels";
 import { SkuImage } from "./SkuImage";
@@ -99,45 +100,46 @@ export function SkuModal({
       className="m-auto max-h-[92vh] w-[min(56rem,calc(100vw-1.5rem))] overflow-hidden rounded-2xl p-0 shadow-2xl backdrop:bg-neutral-950/40 backdrop:backdrop-blur-[2px]"
     >
       <div className="flex max-h-[92vh] flex-col">
-        <header className="flex items-start gap-4 border-b border-neutral-200 px-6 py-4">
-          <SkuImage skuId={row.sku_id} name={row.sku_name} size="lg" />
-          <div className="min-w-0 flex-1">
-            <div className="flex flex-wrap items-center gap-2">
-              <SituationBadge flag={row.flag} />
-              {row.flags
-                .filter((f) => f !== row.flag)
-                .map((f) => (
-                  <SituationBadge key={f} flag={f} />
-                ))}
-              {row.is_exception ? <JudgementBadge /> : null}
-              <DecisionBadge status={row.status} released={locked} />
+        <header className="border-b border-neutral-200 px-4 py-4 sm:px-6">
+          <div className="flex items-start gap-3 sm:gap-4">
+            <SkuImage skuId={row.sku_id} size="hero" />
+            <div className="min-w-0 flex-1">
+              <h2 id="sku-title" className="text-lg leading-snug font-semibold tracking-tight sm:text-xl">
+                {row.sku_name}
+              </h2>
+              <p className="mt-0.5 text-sm text-neutral-600">
+                <span className="font-mono">{row.sku_id}</span> · {row.perishability === "high" ? "Perishable" : "Long shelf life"} · {row.distributor_id ?? "No distributor"}
+              </p>
+              <div className="mt-2 flex flex-wrap items-center gap-1.5">
+                <SituationBadge flag={row.flag} short />
+                {row.flags
+                  .filter((f) => f !== row.flag)
+                  .map((f) => (
+                    <SituationBadge key={f} flag={f} short />
+                  ))}
+                {row.is_exception ? <JudgementBadge /> : null}
+                <DecisionBadge status={row.status} released={locked} />
+              </div>
+              {row.misfit ? <p className="mt-1.5 text-xs font-medium text-amber-800">Overridden often: the rules may not fit this SKU.</p> : null}
             </div>
-            <h2 id="sku-title" className="mt-2 truncate text-xl font-semibold tracking-tight">
-              {row.sku_name}
-            </h2>
-            <p className="text-sm text-neutral-600">
-              <span className="font-mono">{row.sku_id}</span> · {row.perishability === "high" ? "Perishable" : "Long shelf life"} ·{" "}
-              {row.distributor_id ?? "No distributor"}
-              {row.misfit ? <span className="ml-2 font-medium text-amber-800">· Overridden often: the rules may not fit this SKU</span> : null}
-            </p>
-          </div>
-          <div className="flex items-center gap-1">
-            <span className="mr-1 hidden text-xs text-neutral-600 sm:inline">
-              {position.index + 1} of {position.total}
-            </span>
-            <button type="button" onClick={onPrev} disabled={!onPrev} className="rounded-lg p-2 hover:bg-neutral-100 disabled:opacity-30" aria-label="Previous SKU">
-              <ChevronLeft className="h-5 w-5" />
-            </button>
-            <button type="button" onClick={onNext} disabled={!onNext} className="rounded-lg p-2 hover:bg-neutral-100 disabled:opacity-30" aria-label="Next SKU">
-              <ChevronRight className="h-5 w-5" />
-            </button>
-            <button type="button" onClick={() => ref.current?.close()} className="rounded-lg p-2 hover:bg-neutral-100" aria-label="Close">
-              <X className="h-5 w-5" />
-            </button>
+            <div className="-mt-1 -mr-2 flex shrink-0 items-center">
+              <span className="mr-1 hidden text-xs text-neutral-600 sm:inline">
+                {position.index + 1} of {position.total}
+              </span>
+              <button type="button" onClick={onPrev} disabled={!onPrev} className="rounded-lg p-2.5 hover:bg-neutral-100 disabled:opacity-30" aria-label="Previous SKU">
+                <ChevronLeft className="h-5 w-5" />
+              </button>
+              <button type="button" onClick={onNext} disabled={!onNext} className="rounded-lg p-2.5 hover:bg-neutral-100 disabled:opacity-30" aria-label="Next SKU">
+                <ChevronRight className="h-5 w-5" />
+              </button>
+              <button type="button" onClick={() => ref.current?.close()} className="rounded-lg p-2.5 hover:bg-neutral-100" aria-label="Close">
+                <X className="h-5 w-5" />
+              </button>
+            </div>
           </div>
         </header>
 
-        <div className="flex-1 space-y-6 overflow-y-auto px-6 py-5">
+        <div className="flex-1 space-y-6 overflow-y-auto px-4 py-5 sm:px-6">
           <p className="text-[15px] leading-relaxed text-neutral-800">{headline(row)}</p>
 
           <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
@@ -186,7 +188,17 @@ export function SkuModal({
                   <p className="mt-2 text-xs text-violet-800">Written by Claude from the numbers on this page. It never sets the quantity.</p>
                 </>
               ) : (
-                <p className="mt-2 text-sm text-violet-950">Rationale unavailable. The rule reasons below still apply.</p>
+                <>
+                  {ruleExplanation(row).why.map((w, i) => (
+                    <p key={i} className="mt-2 text-sm leading-relaxed text-violet-950">
+                      {w}
+                    </p>
+                  ))}
+                  <p className="mt-2 text-sm text-violet-950">
+                    <strong>Check this first:</strong> {ruleExplanation(row).checkFirst}
+                  </p>
+                  <p className="mt-2 text-xs text-violet-800">Rationale unavailable from Claude; this explanation comes from the rules.</p>
+                </>
               )}
             </section>
           ) : null}
@@ -220,7 +232,7 @@ export function SkuModal({
           ) : null}
         </div>
 
-        <footer className="flex flex-wrap items-center gap-2 border-t border-neutral-200 bg-neutral-50 px-6 py-3">
+        <footer className="flex items-center gap-2 border-t border-neutral-200 bg-neutral-50 px-4 py-3 sm:px-6">
           {locked ? (
             <p className="text-sm text-neutral-700">Sent to procurement. It can no longer be changed.</p>
           ) : (
@@ -228,8 +240,9 @@ export function SkuModal({
               <button type="button" className={btn.primary} disabled={pending || !canApprove} onClick={approve}>
                 {pending ? "Approving…" : row.recommended_action === "pause_next_order" ? "Approve pause" : `Approve ${fmtInt(row.recommended_qty)}`}
               </button>
-              <button type="button" className={btn.secondary} disabled={pending} onClick={onEdit}>
-                Change quantity
+              <button type="button" className={btn.secondary} disabled={pending} onClick={onEdit} aria-label="Change quantity">
+                <span className="sm:hidden">Change</span>
+                <span className="hidden sm:inline">Change quantity</span>
               </button>
               <button type="button" className={btn.danger} disabled={pending || row.status === "rejected"} onClick={onReject}>
                 Reject

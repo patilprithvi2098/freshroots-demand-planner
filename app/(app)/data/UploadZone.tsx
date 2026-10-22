@@ -7,7 +7,20 @@ import { btn, Card } from "@/components/ui";
 import { confirmUploadAction, previewUploadAction } from "../actions";
 import { useRouter } from "next/navigation";
 
-export function UploadZone({ fileType, label, lastUpload, status }: { fileType: FileType; label: string; lastUpload: string | null; status?: string | null }) {
+export function UploadZone({
+  fileType,
+  label,
+  lastUpload,
+  status,
+  compact = false,
+}: {
+  fileType: FileType;
+  label: string;
+  lastUpload: string | null;
+  status?: string | null;
+  /** One-line row with an Upload button, for files that rarely change. */
+  compact?: boolean;
+}) {
   const [file, setFile] = useState<File | null>(null);
   const [preview, setPreview] = useState<UploadPreview | null>(null);
   const [error, setError] = useState<string | null>(null);
@@ -60,16 +73,8 @@ export function UploadZone({ fileType, label, lastUpload, status }: { fileType: 
   }
 
   return (
-    <Card>
-      <div className="flex items-baseline justify-between gap-2">
-        <h2 className="font-semibold">{label}</h2>
-        <code className="text-xs text-neutral-600">{fileType}.csv</code>
-      </div>
-      {status ? <p className="mt-1 text-sm text-neutral-800">{status}</p> : null}
-      <p className="mt-0.5 text-xs text-neutral-600">{lastUpload ? `Last upload: ${lastUpload}` : "No upload recorded"}</p>
-
-      <label
-        htmlFor={inputId}
+    <Card className={compact ? "p-4!" : ""}>
+      <div
         onDragOver={(e) => {
           e.preventDefault();
           setDragOver(true);
@@ -80,19 +85,32 @@ export function UploadZone({ fileType, label, lastUpload, status }: { fileType: 
           setDragOver(false);
           choose(e.dataTransfer.files[0]);
         }}
-        className={`mt-3 flex cursor-pointer flex-col items-center justify-center rounded-md border-2 border-dashed px-4 py-6 text-center text-sm focus-within:outline-2 focus-within:outline-brand-700 ${dragOver ? "border-brand-600 bg-brand-50" : "border-neutral-300 hover:bg-neutral-50"}`}
+        className={compact ? `flex flex-wrap items-center gap-x-4 gap-y-2 rounded-xl ${dragOver ? "bg-emerald-50 ring-2 ring-emerald-600" : ""}` : ""}
       >
-        <span className="font-medium text-brand-700">Choose a CSV file</span>
-        <span className="text-neutral-600">or drag it here · up to 10 MB</span>
-        <input
-          ref={inputRef}
-          id={inputId}
-          type="file"
-          accept=".csv,text/csv"
-          className="sr-only"
-          onChange={(e) => choose(e.target.files?.[0])}
-        />
-      </label>
+        <div className="min-w-0 flex-1">
+          <div className="flex items-baseline justify-between gap-2">
+            <h3 className="font-semibold">{label}</h3>
+            {compact ? null : <code className="text-xs text-neutral-600">{fileType}.csv</code>}
+          </div>
+          {status ? <p className="mt-0.5 text-sm text-neutral-800">{status}</p> : null}
+          <p className="mt-0.5 text-xs text-neutral-600">{lastUpload ? `Last upload: ${lastUpload}` : "No upload recorded"}</p>
+        </div>
+        {compact ? (
+          <label htmlFor={inputId} className={`${btn.secondary} cursor-pointer focus-within:outline-2 focus-within:outline-emerald-700`}>
+            Upload {fileType}.csv
+            <input ref={inputRef} id={inputId} type="file" accept=".csv,text/csv" className="sr-only" onChange={(e) => choose(e.target.files?.[0])} />
+          </label>
+        ) : (
+          <label
+            htmlFor={inputId}
+            className={`mt-3 flex cursor-pointer flex-col items-center justify-center rounded-xl border-2 border-dashed px-4 py-5 text-center text-sm focus-within:outline-2 focus-within:outline-emerald-700 ${dragOver ? "border-emerald-600 bg-emerald-50" : "border-neutral-300 hover:bg-neutral-50"}`}
+          >
+            <span className="font-medium text-emerald-800">Choose {fileType}.csv</span>
+            <span className="text-neutral-600">or drag it here · up to 10 MB</span>
+            <input ref={inputRef} id={inputId} type="file" accept=".csv,text/csv" className="sr-only" onChange={(e) => choose(e.target.files?.[0])} />
+          </label>
+        )}
+      </div>
 
       <div aria-live="polite">
         {pending ? <p className="mt-3 text-sm text-neutral-600">Checking file…</p> : null}
@@ -101,7 +119,7 @@ export function UploadZone({ fileType, label, lastUpload, status }: { fileType: 
             {error}
           </p>
         ) : null}
-        {done ? <p className="mt-3 rounded-md border border-brand-100 bg-brand-50 px-3 py-2 text-sm text-brand-800">{done}</p> : null}
+        {done ? <p className="mt-3 rounded-md border border-emerald-100 bg-emerald-50 px-3 py-2 text-sm text-emerald-800">{done}</p> : null}
       </div>
 
       {preview ? <PreviewPanel preview={preview} pending={pending} onConfirm={confirm} onCancel={cancel} /> : null}
