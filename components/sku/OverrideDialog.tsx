@@ -3,8 +3,8 @@
 import { useEffect, useRef, useState, useTransition } from "react";
 import { fmtInt } from "@/lib/format";
 import { btn, input } from "@/components/ui";
-import { editAction, rejectAction } from "../actions";
-import type { QueueRow } from "./QueueClient";
+import { editAction, rejectAction } from "@/app/(app)/actions";
+import type { SkuRow } from "@/lib/skuRow";
 
 const REASONS: { value: string; label: string }[] = [
   { value: "known_event", label: "Known event" },
@@ -15,7 +15,7 @@ const REASONS: { value: string; label: string }[] = [
   { value: "other", label: "Other" },
 ];
 
-export function OverrideDialog({ mode, row, onClose, onDone }: { mode: "edit" | "reject"; row: QueueRow; onClose: () => void; onDone: (msg: string) => void }) {
+export function OverrideDialog({ mode, row, onClose, onDone }: { mode: "edit" | "reject"; row: SkuRow; onClose: () => void; onDone: (msg: string) => void }) {
   const ref = useRef<HTMLDialogElement>(null);
   const [qty, setQty] = useState(String(row.final_qty ?? row.recommended_qty ?? 0));
   const [reason, setReason] = useState(row.override_reason_code ?? "");

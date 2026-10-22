@@ -58,8 +58,8 @@ export async function confirmUploadAction(form: FormData): Promise<ActionResult<
     const session = await assertRole(["planner"]);
     const { fileType, file, text } = await readCsv(form);
     const res = await confirmUpload(await createClient(), session.userId, fileType, file.name, text);
-    revalidatePath("/upload");
-    revalidatePath("/runs");
+    revalidatePath("/data");
+    revalidatePath("/overview");
     return { ok: true, data: res, message: `Saved ${res.saved} rows.` };
   } catch (e) {
     return fail(e);
@@ -81,7 +81,8 @@ export async function runNowAction(confirmStaleInventory: boolean): Promise<Acti
         console.error("enrichRun failed", e);
       }
     });
-    revalidatePath("/runs");
+    revalidatePath("/data");
+    revalidatePath("/overview");
     revalidatePath("/queue");
     return {
       ok: true,
@@ -101,6 +102,7 @@ export async function retryRationalesAction(runId: string): Promise<ActionResult
     await db.from("recommendations").update({ ai_status: "pending" }).eq("run_id", runId).in("ai_status", ["failed", "skipped_cap"]);
     const res = await enrichRun(db, runId);
     revalidatePath("/queue");
+    revalidatePath("/overview");
     return { ok: true, data: res };
   } catch (e) {
     return fail(e);
@@ -114,6 +116,7 @@ export async function approveAction(id: string): Promise<ActionResult> {
     const s = await assertRole(["planner"]);
     await review.approve(await createClient(), s.userId, id);
     revalidatePath("/queue");
+    revalidatePath("/overview");
     return { ok: true, data: undefined };
   } catch (e) {
     return fail(e);
@@ -125,6 +128,7 @@ export async function editAction(input: { id: string; qty: number; reason: strin
     const s = await assertRole(["planner"]);
     await review.edit(await createClient(), s.userId, input as Parameters<typeof review.edit>[2]);
     revalidatePath("/queue");
+    revalidatePath("/overview");
     return { ok: true, data: undefined };
   } catch (e) {
     return fail(e);
@@ -136,6 +140,7 @@ export async function rejectAction(input: { id: string; reason: string; note?: s
     const s = await assertRole(["planner"]);
     await review.reject(await createClient(), s.userId, input as Parameters<typeof review.reject>[2]);
     revalidatePath("/queue");
+    revalidatePath("/overview");
     return { ok: true, data: undefined };
   } catch (e) {
     return fail(e);
@@ -147,6 +152,7 @@ export async function bulkApproveAction(ids: string[]): Promise<ActionResult<{ a
     const s = await assertRole(["planner"]);
     const res = await review.bulkApprove(await createClient(), s.userId, ids);
     revalidatePath("/queue");
+    revalidatePath("/overview");
     return { ok: true, data: res };
   } catch (e) {
     return fail(e);
@@ -158,8 +164,9 @@ export async function releaseAction(runId: string): Promise<ActionResult<{ relea
     const s = await assertRole(["planner"]);
     const res = await review.release(await createClient(), s.userId, runId);
     revalidatePath("/queue");
+    revalidatePath("/overview");
     revalidatePath("/procurement");
-    return { ok: true, data: res, message: `Released ${res.released} recommendations to procurement.` };
+    return { ok: true, data: res, message: `Sent ${res.released} order line${res.released === 1 ? "" : "s"} to procurement.` };
   } catch (e) {
     return fail(e);
   }

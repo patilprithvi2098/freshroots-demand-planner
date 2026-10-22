@@ -38,7 +38,7 @@ test.describe(() => {
   test.use({ storageState: authFile("planner") });
   test("accessibility: queue side panel and override dialog", async ({ page }) => {
     test.skip(!hasSession("planner"), "No planner session");
-    await page.goto("/queue?all=1");
+    await page.goto("/queue?view=all");
     const first = page.getByRole("button", { name: /^Open details for / }).first();
     test.skip((await first.count()) === 0, "No run in the database yet");
     await first.click();

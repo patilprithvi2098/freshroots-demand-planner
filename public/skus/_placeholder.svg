@@ -1,0 +1,26 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 400 400" width="400" height="400" role="img" aria-label="Freshroots Product">
+  <title>Freshroots Product</title>
+  <defs>
+    <radialGradient id="bg" cx="50%" cy="40%" r="70%"><stop offset="0" stop-color="#ffffff"/><stop offset="1" stop-color="#f0fdf4"/></radialGradient>
+  </defs>
+  <rect width="400" height="400" fill="url(#bg)"/>
+  <ellipse cx="200" cy="352" rx="120" ry="12" fill="#000000" opacity="0.08"/>
+  
+  <path d="M110 112 L140 92 H300 L270 112 Z" fill="#15803d" opacity="0.85"/>
+  <path d="M270 112 L300 92 V300 L270 322 Z" fill="#15803d"/>
+  <rect x="110" y="112" width="160" height="210" rx="4" fill="#ecfdf5" stroke="#15803d" stroke-width="3"/>
+  <rect x="110" y="122" width="160" height="34" fill="#ffffff" opacity="0.92"/>
+  
+  <g transform="translate(190 139) scale(0.85)">
+    <circle cx="-46" cy="0" r="11" fill="#15803d"/>
+    <path d="M-46 6 V-2 M-46 -1 C-46 -7 -52 -9 -55 -8 C-54 -3 -50 -1 -46 -1 Z M-46 -3 C-46 -8 -40 -10 -37 -9 C-38 -4 -42 -2 -46 -3 Z" fill="#ffffff" stroke="#ffffff" stroke-width="1.6" stroke-linejoin="round"/>
+    <text x="-31" y="5.5" font-family="'Helvetica Neue', Arial, sans-serif" font-size="17" font-weight="700" letter-spacing="0.2" fill="#052e16">freshroots</text>
+  </g>
+  
+    <circle cx="190" cy="206" r="28" fill="#16a34a" opacity="0.92"/>
+    <circle cx="181.6" cy="196.2" r="7.840000000000001" fill="#ffffff" opacity="0.35"/>
+    <path d="M190 178 C 195.6 164, 215.2 162.6, 219.4 171 C 209.6 178, 198.4 179.4, 190 178 Z" fill="#15803d"/>
+  <text x="190" y="262" text-anchor="middle" font-family="'Helvetica Neue', Arial, sans-serif" font-size="18" font-weight="800" fill="#052e16">Product</text>
+    
+  <text x="200" y="382" text-anchor="middle" font-family="'Helvetica Neue', Arial, sans-serif" font-size="10" fill="#57534e" letter-spacing="1.5">ILLUSTRATIVE PACK · NOT A PRODUCT PHOTO</text>
+</svg>

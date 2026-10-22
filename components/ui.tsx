@@ -13,7 +13,7 @@ export function PageHeader({ title, description, actions }: { title: string; des
 }
 
 export function Card({ children, className = "" }: { children: ReactNode; className?: string }) {
-  return <section className={`rounded-lg border border-neutral-200 bg-white p-5 shadow-sm ${className}`}>{children}</section>;
+  return <section className={`rounded-2xl border border-neutral-200 bg-white p-5 shadow-sm ${className}`}>{children}</section>;
 }
 
 export function Banner({ tone = "info", children }: { tone?: "info" | "warn" | "error" | "success"; children: ReactNode }) {
@@ -32,7 +32,7 @@ export function Banner({ tone = "info", children }: { tone?: "info" | "warn" | "
 
 export function EmptyState({ title, children }: { title: string; children?: ReactNode }) {
   return (
-    <div className="rounded-lg border border-dashed border-neutral-300 bg-white px-6 py-12 text-center">
+    <div className="rounded-2xl border border-dashed border-neutral-300 bg-white px-6 py-12 text-center">
       <p className="font-medium">{title}</p>
       {children ? <div className="mt-2 text-sm text-neutral-600">{children}</div> : null}
     </div>
@@ -75,12 +75,12 @@ export function StatusPill({ status, label }: { status: string; label: string })
 
 export const btn = {
   primary:
-    "inline-flex items-center justify-center rounded-md bg-brand-700 px-3.5 py-2 text-sm font-medium text-white shadow-sm hover:bg-brand-800 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-brand-700 disabled:cursor-not-allowed disabled:opacity-50",
+    "inline-flex items-center justify-center rounded-lg bg-emerald-700 px-3.5 py-2 text-sm font-medium text-white shadow-sm hover:bg-emerald-800 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-emerald-700 disabled:cursor-not-allowed disabled:opacity-50",
   secondary:
-    "inline-flex items-center justify-center rounded-md border border-neutral-300 bg-white px-3.5 py-2 text-sm font-medium text-neutral-800 shadow-sm hover:bg-neutral-50 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-brand-700 disabled:cursor-not-allowed disabled:opacity-50",
+    "inline-flex items-center justify-center rounded-lg border border-neutral-300 bg-white px-3.5 py-2 text-sm font-medium text-neutral-800 shadow-sm hover:bg-neutral-50 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-emerald-700 disabled:cursor-not-allowed disabled:opacity-50",
   danger:
-    "inline-flex items-center justify-center rounded-md border border-red-300 bg-white px-3.5 py-2 text-sm font-medium text-red-700 shadow-sm hover:bg-red-50 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-red-600 disabled:cursor-not-allowed disabled:opacity-50",
+    "inline-flex items-center justify-center rounded-lg border border-red-300 bg-white px-3.5 py-2 text-sm font-medium text-red-700 shadow-sm hover:bg-red-50 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-red-600 disabled:cursor-not-allowed disabled:opacity-50",
 };
 
 export const input =
-  "block w-full rounded-md border border-neutral-300 bg-white px-3 py-2 text-sm shadow-sm focus:border-brand-600 focus:outline-none focus:ring-2 focus:ring-brand-100";
+  "block w-full rounded-lg border border-neutral-300 bg-white px-3 py-2 text-sm shadow-sm focus:border-emerald-600 focus:outline-none focus:ring-2 focus:ring-emerald-100";

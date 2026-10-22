@@ -23,6 +23,29 @@ within two full quarters of going live.
 The AI never sets or changes a quantity. If it fails or the spend cap is hit, the queue shows
 "Rationale unavailable" and everything else still works.
 
+## Screens
+
+| Screen | Who | What it answers |
+|---|---|---|
+| **Overview** (home) | Planner | Where this cycle stands (fresh data → run → review → send), what is running low or overstocked, stock health for every SKU, total demand, and which data feeds the plan |
+| **Review** | Planner | Tabs: to decide, needs judgement, running low, too much stock, demand rising, decided. Approve in one click, bulk-approve the straightforward ones, send to procurement |
+| **SKU pop-up** | Planner | Opens from any SKU: one-line summary, suggested order, cover against the safe range, 16-week sales, Claude's explanation for judgement SKUs, the rule trace, and Approve / Change / Reject. ← → moves through the list |
+| **Orders** | Planner, procurement | Approved orders sent to procurement, with CSV export |
+| **Data** | Planner | Upload the SAP exports (preview first), run planning, run history, which optional checks are on |
+| **Performance** | Planner, viewer | Accept and override rates, kill-criteria lights, link to the backtest |
+| **Rules** | Planner | Versioned rule parameters and the rules in plain language (the Excel fallback) |
+
+SKU images in `public/skus/` are illustrative pack shots generated from the SKU master, not product photos.
+Replace them with real photos by saving `<SKU_ID>.svg` (or change `SkuImage` to another format).
+
+## SAP and Zoho
+
+Not connected directly. The brief says API access to SAP and Zoho is not confirmed, so Phases 1–2 use CSV
+exports uploaded on the Data page; no SAP or Zoho key is needed to run the app. Phase 3 replaces the uploads
+with an SAP export folder or SFTP drop (needs the IT team to schedule the export) and the Zoho Inventory API
+for open POs and lead times (needs an OAuth client ID, secret, refresh token and organisation ID from
+Freshroots' Zoho admin).
+
 ## Stack
 
 - Next.js 15 (App Router), TypeScript strict, Tailwind CSS 4
@@ -96,7 +119,8 @@ refuses to run if the URL does not match the ref). The planner signs in through 
 `E2E_USERNAME` (default `raghav`) and `E2E_PASSWORD`. Procurement and viewer tests create temporary users with
 random passwords and delete them afterwards.
 
-CI (`.github/workflows/ci.yml`) runs lint, type check and Vitest on every pull request.
+CI is defined in `ci/github-actions-ci.yml` (lint, type check, Vitest). Move it to `.github/workflows/ci.yml` to
+switch it on; pushing that path needs a GitHub token with the `workflow` scope.
 
 ## Where things live
 
@@ -109,7 +133,9 @@ CI (`.github/workflows/ci.yml`) runs lint, type check and Vitest on every pull r
 | `lib/ai/rationale.ts` | System prompt, context builder, Claude call with Zod validation and one retry |
 | `lib/services/` | Runs, AI enrichment, review actions, uploads, dashboard, procurement |
 | `lib/metrics.ts` | Accept/override rates, repeated-override flag, kill-criteria lights |
-| `app/(app)/` | Screens: queue, upload, runs, procurement, backtest, dashboard, settings |
+| `app/(app)/` | Screens: overview (home), review, orders, data, performance, backtest, rules |
+| `components/sku/` | The SKU pop-up, override dialog, situation badges and pack images |
+| `scripts/generate-sku-images.ts` | Branded placeholder pack shots for every SKU (`npm run sku-images`) |
 | `supabase/migrations/` | Schema, RLS policies, default rule config |
 
 ## Decisions and deviations from the spec

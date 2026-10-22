@@ -1,0 +1,25 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 400 400" width="400" height="400" role="img" aria-label="Freshroots Multigrain Bread 400g">
+  <title>Freshroots Multigrain Bread 400g</title>
+  <defs>
+    <radialGradient id="bg" cx="50%" cy="40%" r="70%"><stop offset="0" stop-color="#ffffff"/><stop offset="1" stop-color="#fffbeb"/></radialGradient>
+  </defs>
+  <rect width="400" height="400" fill="url(#bg)"/>
+  <ellipse cx="200" cy="352" rx="120" ry="12" fill="#000000" opacity="0.08"/>
+  
+  <path d="M104 186 C104 140 140 116 200 116 C260 116 296 140 296 186 V306 C296 318 288 326 276 326 H124 C112 326 104 318 104 306 Z" fill="#fef3c7" stroke="#b45309" stroke-width="3"/>
+  <path d="M184 112 L200 96 L216 112" fill="none" stroke="#b45309" stroke-width="4"/>
+  <rect x="104" y="150" width="192" height="34" fill="#ffffff" opacity="0.92"/>
+  
+  <g transform="translate(200 167) scale(0.85)">
+    <circle cx="-46" cy="0" r="11" fill="#15803d"/>
+    <path d="M-46 6 V-2 M-46 -1 C-46 -7 -52 -9 -55 -8 C-54 -3 -50 -1 -46 -1 Z M-46 -3 C-46 -8 -40 -10 -37 -9 C-38 -4 -42 -2 -46 -3 Z" fill="#ffffff" stroke="#ffffff" stroke-width="1.6" stroke-linejoin="round"/>
+    <text x="-31" y="5.5" font-family="'Helvetica Neue', Arial, sans-serif" font-size="17" font-weight="700" letter-spacing="0.2" fill="#451a03">freshroots</text>
+  </g>
+  
+    <circle cx="200" cy="222" r="24" fill="#d97706" opacity="0.92"/>
+    <circle cx="192.8" cy="213.6" r="6.720000000000001" fill="#ffffff" opacity="0.35"/>
+    <path d="M200 198 C 204.8 186, 221.6 184.8, 225.2 192 C 216.8 198, 207.2 199.2, 200 198 Z" fill="#15803d"/>
+  <text x="200" y="272" text-anchor="middle" font-family="'Helvetica Neue', Arial, sans-serif" font-size="18" font-weight="800" fill="#451a03">Multigrain Bread</text>
+    <rect x="170" y="286" width="60" height="22" rx="11" fill="#b45309"/><text x="200" y="301" text-anchor="middle" font-family="'Helvetica Neue', Arial, sans-serif" font-size="12" font-weight="700" fill="#ffffff">400g</text>
+  <text x="200" y="382" text-anchor="middle" font-family="'Helvetica Neue', Arial, sans-serif" font-size="10" fill="#57534e" letter-spacing="1.5">ILLUSTRATIVE PACK · NOT A PRODUCT PHOTO</text>
+</svg>

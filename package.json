@@ -15,12 +15,14 @@
     "dev-link": "tsx --env-file=.env.local scripts/dev-login-link.ts",
     "test:e2e": "playwright test",
     "test:e2e:report": "playwright show-report",
-    "delete-user": "tsx --env-file=.env.local scripts/delete-user.ts"
+    "delete-user": "tsx --env-file=.env.local scripts/delete-user.ts",
+    "sku-images": "tsx scripts/generate-sku-images.ts"
   },
   "dependencies": {
     "@anthropic-ai/sdk": "^1.1.0",
     "@supabase/ssr": "^0.12.7",
     "@supabase/supabase-js": "^2.118.0",
+    "lucide-react": "^1.61.0",
     "next": "15.5.28",
     "papaparse": "^5.7.0",
     "react": "19.1.0",

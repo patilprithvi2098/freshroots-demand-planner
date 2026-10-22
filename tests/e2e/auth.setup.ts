@@ -23,7 +23,7 @@ async function signIn(page: Page, username: string, password: string, home: stri
 setup("sign in as planner", async ({ page }) => {
   const password = process.env.E2E_PASSWORD;
   setup.skip(!password, "Set E2E_PASSWORD (and optionally E2E_USERNAME) to sign in as the planner");
-  await signIn(page, process.env.E2E_USERNAME ?? "raghav", password!, "/queue");
+  await signIn(page, process.env.E2E_USERNAME ?? "raghav", password!, "/overview");
   await page.context().storageState({ path: authFile("planner") });
 });
 

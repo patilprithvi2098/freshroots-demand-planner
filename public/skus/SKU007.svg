@@ -1,0 +1,26 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 400 400" width="400" height="400" role="img" aria-label="Freshroots Coconut Water 330ml">
+  <title>Freshroots Coconut Water 330ml</title>
+  <defs>
+    <radialGradient id="bg" cx="50%" cy="40%" r="70%"><stop offset="0" stop-color="#ffffff"/><stop offset="1" stop-color="#f0fdfa"/></radialGradient>
+  </defs>
+  <rect width="400" height="400" fill="url(#bg)"/>
+  <ellipse cx="200" cy="352" rx="120" ry="12" fill="#000000" opacity="0.08"/>
+  
+  <ellipse cx="200" cy="96" rx="62" ry="14" fill="#d4d4d8"/>
+  <rect x="138" y="96" width="124" height="226" fill="#ecfdf5" stroke="#0f766e" stroke-width="3"/>
+  <ellipse cx="200" cy="322" rx="62" ry="14" fill="#0f766e"/>
+  <rect x="138" y="118" width="124" height="34" fill="#0f766e"/>
+  <g>
+  <g transform="translate(200 135) scale(0.72)">
+    <circle cx="-46" cy="0" r="11" fill="#15803d"/>
+    <path d="M-46 6 V-2 M-46 -1 C-46 -7 -52 -9 -55 -8 C-54 -3 -50 -1 -46 -1 Z M-46 -3 C-46 -8 -40 -10 -37 -9 C-38 -4 -42 -2 -46 -3 Z" fill="#ffffff" stroke="#ffffff" stroke-width="1.6" stroke-linejoin="round"/>
+    <text x="-31" y="5.5" font-family="'Helvetica Neue', Arial, sans-serif" font-size="17" font-weight="700" letter-spacing="0.2" fill="#ffffff">freshroots</text>
+  </g></g>
+  
+    <circle cx="200" cy="200" r="26" fill="#78350f" opacity="0.92"/>
+    <circle cx="192.2" cy="190.9" r="7.280000000000001" fill="#ffffff" opacity="0.35"/>
+    <path d="M200 174 C 205.2 161, 223.4 159.7, 227.3 167.5 C 218.2 174, 207.8 175.3, 200 174 Z" fill="#15803d"/>
+  <text x="200" y="254" text-anchor="middle" font-family="'Helvetica Neue', Arial, sans-serif" font-size="16" font-weight="800" fill="#134e4a">Coconut</text><text x="200" y="274" text-anchor="middle" font-family="'Helvetica Neue', Arial, sans-serif" font-size="16" font-weight="800" fill="#134e4a">Water</text>
+    <rect x="170" y="286" width="60" height="22" rx="11" fill="#0f766e"/><text x="200" y="301" text-anchor="middle" font-family="'Helvetica Neue', Arial, sans-serif" font-size="12" font-weight="700" fill="#ffffff">330ml</text>
+  <text x="200" y="382" text-anchor="middle" font-family="'Helvetica Neue', Arial, sans-serif" font-size="10" fill="#57534e" letter-spacing="1.5">ILLUSTRATIVE PACK · NOT A PRODUCT PHOTO</text>
+</svg>

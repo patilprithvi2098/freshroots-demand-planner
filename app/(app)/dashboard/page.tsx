@@ -1,5 +1,5 @@
 import { requireRole } from "@/lib/auth";
-import { LOSS_TARGET_RUPEES, type Light } from "@/lib/metrics";
+import { formatLakh, LOSS_TARGET_RUPEES, type Light } from "@/lib/metrics";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { createClient } from "@/lib/supabase/server";
 import { loadDashboard } from "@/lib/services/dashboard";
@@ -23,7 +23,7 @@ export default async function DashboardPage() {
   } catch (e) {
     return (
       <>
-        <PageHeader title="Metrics" />
+        <PageHeader title="Performance" />
         <Banner tone="error">The dashboard could not load: {e instanceof Error ? e.message : "unknown error"}.</Banner>
       </>
     );
@@ -34,10 +34,17 @@ export default async function DashboardPage() {
   return (
     <>
       <PageHeader
-        title="Metrics"
+        title="Performance"
+        actions={
+          session.role === "planner" ? (
+            <a href="/backtest" className="text-sm font-medium text-emerald-800 hover:underline">
+              Test the rules on past weeks →
+            </a>
+          ) : null
+        }
         description={
           <>
-            Goal: cut combined stockout and write-off loss from ₹28–34 lakh to {fmtRupees(LOSS_TARGET_RUPEES)} or below per quarter within two full
+            Goal: cut combined stockout and write-off loss from ₹28–34 lakh to {formatLakh(LOSS_TARGET_RUPEES)} or below per quarter within two full
             quarters of going live{d.go_live ? <> (first run {fmtDate(d.go_live)})</> : null}.
           </>
         }
@@ -47,7 +54,7 @@ export default async function DashboardPage() {
         <h2 className="font-semibold">Kill criteria</h2>
         <p className="mb-4 text-sm text-neutral-600">
           Deepa decides whether to stop the system. If any light is red, the fallback is Raghav&apos;s monthly Excel process using the rules on the
-          Settings page.
+          Rules page.
         </p>
         <ul className="grid gap-4 md:grid-cols-3">
           {d.kill.map((k) => {

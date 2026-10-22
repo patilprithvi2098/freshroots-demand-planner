@@ -5,8 +5,9 @@ import type { FileType } from "@/lib/csv/loaders";
 import type { UploadPreview } from "@/lib/services/uploads";
 import { btn, Card } from "@/components/ui";
 import { confirmUploadAction, previewUploadAction } from "../actions";
+import { useRouter } from "next/navigation";
 
-export function UploadZone({ fileType, label, lastUpload }: { fileType: FileType; label: string; lastUpload: string | null }) {
+export function UploadZone({ fileType, label, lastUpload, status }: { fileType: FileType; label: string; lastUpload: string | null; status?: string | null }) {
   const [file, setFile] = useState<File | null>(null);
   const [preview, setPreview] = useState<UploadPreview | null>(null);
   const [error, setError] = useState<string | null>(null);
@@ -15,6 +16,7 @@ export function UploadZone({ fileType, label, lastUpload }: { fileType: FileType
   const [pending, start] = useTransition();
   const inputRef = useRef<HTMLInputElement>(null);
   const inputId = `file-${fileType}`;
+  const router = useRouter();
 
   function formFor(f: File) {
     const fd = new FormData();
@@ -45,6 +47,7 @@ export function UploadZone({ fileType, label, lastUpload }: { fileType: FileType
         setPreview(null);
         setFile(null);
         if (inputRef.current) inputRef.current.value = "";
+        router.refresh();
       } else setError(res.error);
     });
   }
@@ -62,7 +65,8 @@ export function UploadZone({ fileType, label, lastUpload }: { fileType: FileType
         <h2 className="font-semibold">{label}</h2>
         <code className="text-xs text-neutral-600">{fileType}.csv</code>
       </div>
-      <p className="mt-1 text-xs text-neutral-600">{lastUpload ? `Last upload: ${lastUpload}` : "Not uploaded yet"}</p>
+      {status ? <p className="mt-1 text-sm text-neutral-800">{status}</p> : null}
+      <p className="mt-0.5 text-xs text-neutral-600">{lastUpload ? `Last upload: ${lastUpload}` : "No upload recorded"}</p>
 
       <label
         htmlFor={inputId}

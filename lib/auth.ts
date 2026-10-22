@@ -11,7 +11,7 @@ export interface SessionProfile {
 }
 
 export const HOME_BY_ROLE: Record<Role, string> = {
-  planner: "/queue",
+  planner: "/overview",
   procurement: "/procurement",
   viewer: "/dashboard",
 };

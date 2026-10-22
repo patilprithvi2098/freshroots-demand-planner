@@ -19,7 +19,7 @@ export default async function SettingsPage() {
   return (
     <>
       <PageHeader
-        title="Rule settings"
+        title="Rules"
         description="Every save creates a new version. Old versions are never edited, and each run records the version it used."
       />
       <div className="grid gap-6 lg:grid-cols-[1fr_1fr]">

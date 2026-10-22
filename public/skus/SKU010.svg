@@ -1,0 +1,25 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 400 400" width="400" height="400" role="img" aria-label="Freshroots Apple Cider Vinegar 500ml">
+  <title>Freshroots Apple Cider Vinegar 500ml</title>
+  <defs>
+    <radialGradient id="bg" cx="50%" cy="40%" r="70%"><stop offset="0" stop-color="#ffffff"/><stop offset="1" stop-color="#fef2f2"/></radialGradient>
+  </defs>
+  <rect width="400" height="400" fill="url(#bg)"/>
+  <ellipse cx="200" cy="352" rx="120" ry="12" fill="#000000" opacity="0.08"/>
+  
+  <rect x="182" y="58" width="36" height="22" rx="4" fill="#b91c1c"/>
+  <path d="M186 80 H214 V108 C214 118 248 126 248 150 V318 C248 326 242 332 234 332 H166 C158 332 152 326 152 318 V150 C152 126 186 118 186 108 Z" fill="#fde68a" stroke="#b91c1c" stroke-width="3"/>
+  <rect x="152" y="168" width="96" height="128" fill="#ffffff" opacity="0.94"/>
+  
+  <g transform="translate(200 186) scale(0.62)">
+    <circle cx="-46" cy="0" r="11" fill="#15803d"/>
+    <path d="M-46 6 V-2 M-46 -1 C-46 -7 -52 -9 -55 -8 C-54 -3 -50 -1 -46 -1 Z M-46 -3 C-46 -8 -40 -10 -37 -9 C-38 -4 -42 -2 -46 -3 Z" fill="#ffffff" stroke="#ffffff" stroke-width="1.6" stroke-linejoin="round"/>
+    <text x="-31" y="5.5" font-family="'Helvetica Neue', Arial, sans-serif" font-size="17" font-weight="700" letter-spacing="0.2" fill="#450a0a">freshroots</text>
+  </g>
+  
+    <circle cx="200" cy="224" r="16" fill="#dc2626" opacity="0.92"/>
+    <circle cx="195.2" cy="218.4" r="4.48" fill="#ffffff" opacity="0.35"/>
+    <path d="M200 208 C 203.2 200, 214.4 199.2, 216.8 204 C 211.2 208, 204.8 208.8, 200 208 Z" fill="#15803d"/>
+  <text x="200" y="258" text-anchor="middle" font-family="'Helvetica Neue', Arial, sans-serif" font-size="14" font-weight="800" fill="#450a0a">Apple Cider</text><text x="200" y="276" text-anchor="middle" font-family="'Helvetica Neue', Arial, sans-serif" font-size="14" font-weight="800" fill="#450a0a">Vinegar</text>
+    <rect x="170" y="286" width="60" height="22" rx="11" fill="#b91c1c"/><text x="200" y="301" text-anchor="middle" font-family="'Helvetica Neue', Arial, sans-serif" font-size="12" font-weight="700" fill="#ffffff">500ml</text>
+  <text x="200" y="382" text-anchor="middle" font-family="'Helvetica Neue', Arial, sans-serif" font-size="10" fill="#57534e" letter-spacing="1.5">ILLUSTRATIVE PACK · NOT A PRODUCT PHOTO</text>
+</svg>

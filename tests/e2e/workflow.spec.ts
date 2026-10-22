@@ -12,8 +12,9 @@ test.describe.configure({ mode: "serial" });
 test.skip(!allowed || !hasSession("planner"), "Set E2E_ALLOW_WRITES=1 and E2E_SUPABASE_REF to run the write workflow on a dev project.");
 
 const sample = (f: string) => path.join(process.cwd(), "sample-data", f);
-const zone = (page: Page, label: string) => page.locator("section").filter({ has: page.getByRole("heading", { name: label, exact: true }) });
-const row = (page: Page, sku: string) => page.getByRole("row").filter({ has: page.getByRole("button", { name: `Open details for ${sku}` }) });
+const zone = (page: Page, label: string) => page.locator("section").filter({ has: page.getByRole("heading", { name: label, exact: true }) }).last();
+const item = (page: Page, sku: string) => page.locator(`li[data-sku="${sku}"]`);
+const tab = (page: Page, name: string) => page.getByRole("tab", { name: new RegExp(`^${name}`) });
 
 test.beforeAll(() => {
   execFileSync("npx", ["tsx", "--env-file=.env.local", "scripts/e2e-reset.ts"], { stdio: "inherit", env: process.env });
@@ -23,8 +24,8 @@ test.describe("planner", () => {
   test.use({ storageState: authFile("planner") });
   test.beforeEach(({ page }) => guardDialogs(page));
 
-  test("upload: preview, confirm, duplicate rejected, invalid rows listed", async ({ page }) => {
-    await page.goto("/upload");
+  test("data: preview, confirm, duplicate rejected, invalid rows listed", async ({ page }) => {
+    await page.goto("/data");
     const z = zone(page, "SKU master");
     await z.locator('input[type="file"]').setInputFiles(sample("sku_master.csv"));
     await expect(z.getByText("sku_master.csv: 15 rows, 15 valid.")).toBeVisible();
@@ -54,53 +55,69 @@ test.describe("planner", () => {
     await expect(s.getByText("Only .csv files are accepted.")).toBeVisible();
   });
 
-  test("run now creates seven flagged SKUs and two exceptions", async ({ page }) => {
-    await page.goto("/runs");
-    await expect(page.getByText("2026-W42")).toBeVisible();
-    await page.getByRole("button", { name: "Run now" }).click();
+  test("overview: run planning from the cycle card, then tiles and stock health", async ({ page }) => {
+    await page.goto("/overview");
+    await expect(page.getByText("No plan yet for this cycle")).toBeVisible();
+    await page.getByRole("button", { name: "Run planning" }).click();
     await expect(page.getByText(/7 SKUs flagged, 2 exceptions/)).toBeVisible({ timeout: 60_000 });
-    await expect(page.getByRole("row").filter({ hasText: "completed" }).first()).toContainText("15");
+    await page.reload();
+    await expect(page.getByRole("link", { name: /Running low\s*5\s*SKUs/ })).toBeVisible();
+    await expect(page.getByRole("link", { name: /Too much stock\s*2\s*SKUs/ })).toBeVisible();
+    await expect(page.getByRole("link", { name: /Need your judgement\s*2\s*SKUs/ })).toBeVisible();
+    await expect(page.getByText("Festival month: demand raised 25% before checking stock")).toBeVisible();
+    await expect(page.getByRole("link", { name: "Review 7 SKUs" })).toBeVisible();
+
+    // Stock health opens the pop-up.
+    await page.getByRole("button", { name: /^Quinoa 500g.*22\.2/ }).click();
+    const dialog = page.getByRole("dialog", { name: "Freshroots Quinoa 500g" });
+    await expect(dialog).toContainText("above the 14-week maximum. Suggested: pause the next order.");
+    await page.keyboard.press("Escape");
+    await expect(page.getByRole("dialog")).toHaveCount(0);
   });
 
-  test("review queue: ranking, exceptions, filters and side panel", async ({ page }) => {
+  test("review: ranking, tabs and the SKU pop-up", async ({ page }) => {
     await page.goto("/queue");
-    const skus = await page.getByRole("button", { name: /^Open details for / }).allTextContents();
-    expect(skus).toEqual(["SKU011", "SKU004", "SKU013", "SKU001", "SKU003", "SKU006", "SKU007"]);
+    const order = await page.locator("li[data-sku]").evaluateAll((els) => els.map((e) => e.getAttribute("data-sku")));
+    expect(order).toEqual(["SKU011", "SKU004", "SKU013", "SKU001", "SKU003", "SKU006", "SKU007"]);
 
-    // Exceptions are visually distinct and cannot be selected for bulk approval.
-    await expect(row(page, "SKU001")).toContainText("Exception");
-    await expect(row(page, "SKU001")).toContainText("Possible double count");
-    await expect(row(page, "SKU007")).toContainText("Perishable pause in festival");
-    await expect(row(page, "SKU001").getByRole("checkbox")).toHaveCount(0);
-    await expect(row(page, "SKU003").getByRole("checkbox")).toHaveCount(1);
-    await expect(row(page, "SKU001")).toContainText("750");
-    await expect(row(page, "SKU006")).toContainText("22.2");
+    // Judgement SKUs are marked and cannot be bulk-selected.
+    await expect(item(page, "SKU001")).toContainText("Needs judgement");
+    await expect(item(page, "SKU001").getByRole("checkbox")).toHaveCount(0);
+    await expect(item(page, "SKU003").getByRole("checkbox")).toHaveCount(1);
+    await expect(item(page, "SKU001")).toContainText("750");
+    await expect(item(page, "SKU006")).toContainText("22.2");
+    await expect(item(page, "SKU006")).toContainText("Pause");
 
-    await page.getByLabel("Exceptions only").check();
-    await expect(page.getByRole("button", { name: /^Open details for / })).toHaveCount(2);
-    await page.getByLabel("Exceptions only").uncheck();
-    await page.getByLabel("Flag").selectOption("overstock_risk");
-    await expect(page.getByRole("button", { name: /^Open details for / })).toHaveCount(2);
-    await page.getByLabel("Flag").selectOption("all");
-    await page.getByLabel("Show no-action SKUs").check();
-    await expect(page.getByRole("button", { name: /^Open details for / })).toHaveCount(15);
-    await page.getByLabel("Show no-action SKUs").uncheck();
+    await tab(page, "Needs judgement").click();
+    await expect(page.locator("li[data-sku]")).toHaveCount(2);
+    await tab(page, "Too much stock").click();
+    await expect(page.locator("li[data-sku]")).toHaveCount(2);
+    await tab(page, "All SKUs").click();
+    await expect(page.locator("li[data-sku]")).toHaveCount(15);
+    await tab(page, "To decide").click();
 
-    // Side panel: chart, rule trace in plain words, AI rationale (or the unavailable message).
     await page.getByRole("button", { name: "Open details for SKU001" }).click();
     const panel = page.getByRole("dialog", { name: "Freshroots Mango Drink 200ml" });
     await expect(panel.getByRole("img", { name: /Weekly units sold/ })).toBeVisible();
+    await expect(panel).toContainText("900 units last 3.4 weeks at 269 a week (festival demand), below the 6-week minimum. Suggested: order 750 units now.");
     await expect(panel).toContainText("Festival month: demand raised 25% from 214.9 to 268.6 units a week.");
-    await expect(panel).toContainText("covers 3.4 weeks");
     await expect(panel).toContainText("Reorder now at 1.5x the standard 500 = 750 units.");
-    // Rationales are written after the run; give the AI step time, then accept either outcome.
+    await expect(panel).toContainText("4 of 7");
+    // Arrow keys move to the next SKU in the list.
+    await page.keyboard.press("ArrowRight");
+    await expect(page.getByRole("dialog", { name: "Freshroots Brown Rice 1kg" })).toBeVisible();
+    // Rationales are written after the run; accept either outcome.
+    await page.keyboard.press("ArrowLeft");
     await expect
       .poll(
         async () => {
-          await page.reload();
-          await page.getByRole("button", { name: "Open details for SKU001" }).click();
           const t = await page.getByRole("dialog", { name: "Freshroots Mango Drink 200ml" }).textContent();
-          return /Check this first:|Rationale unavailable/.test(t ?? "");
+          if (!/Check this first:|Rationale unavailable/.test(t ?? "")) {
+            await page.reload();
+            await page.getByRole("button", { name: "Open details for SKU001" }).click();
+            return false;
+          }
+          return true;
         },
         { timeout: 60_000, intervals: [3_000] },
       )
@@ -109,10 +126,11 @@ test.describe("planner", () => {
     await expect(page.getByRole("dialog")).toHaveCount(0);
   });
 
-  test("override dialog requires a reason and a valid quantity; nothing is sent until valid", async ({ page }) => {
+  test("change and reject need a reason and a valid quantity; nothing is sent until valid", async ({ page }) => {
     await page.goto("/queue");
     const writes = countWrites(page, "/queue");
-    await row(page, "SKU001").getByRole("button", { name: "Edit" }).click();
+    await page.getByRole("button", { name: "Open details for SKU001" }).click();
+    await page.getByRole("button", { name: "Change quantity" }).click();
     const dialog = page.getByRole("dialog", { name: "Edit quantity for SKU001" });
     await expect(dialog.getByLabel("Final quantity")).toHaveValue("750");
 
@@ -133,11 +151,14 @@ test.describe("planner", () => {
     await dialog.getByLabel(/Note/).fill("Diwali stock already ordered by the depot");
     await dialog.getByRole("button", { name: "Save edit" }).click();
     await expect(page.getByText("SKU001 edited to 600.")).toBeVisible();
-    await expect(row(page, "SKU001")).toContainText("Edited");
-    await expect(row(page, "SKU001")).toContainText("→ 600");
+    await page.keyboard.press("Escape");
+    await tab(page, "Decided").click();
+    await expect(item(page, "SKU001")).toContainText("Changed");
+    await expect(item(page, "SKU001")).toContainText("→ 600");
 
-    // Reject with keyboard only.
-    await row(page, "SKU007").getByRole("button", { name: "Reject" }).click();
+    await tab(page, "To decide").click();
+    await page.getByRole("button", { name: "Open details for SKU007" }).click();
+    await page.getByRole("dialog", { name: "Freshroots Coconut Water 330ml" }).getByRole("button", { name: "Reject" }).click();
     const rej = page.getByRole("dialog", { name: "Reject recommendation for SKU007" });
     await expect(rej.getByLabel(/Reason/)).toBeFocused();
     await rej.getByLabel(/Reason/).selectOption("rule_too_strict");
@@ -145,30 +166,33 @@ test.describe("planner", () => {
     await expect(page.getByText("SKU007 rejected.")).toBeVisible();
   });
 
-  test("bulk approve skips exceptions; release sends approved and edited rows", async ({ page }) => {
+  test("bulk approve skips judgement SKUs; send releases approved and changed rows", async ({ page }) => {
     await page.goto("/queue");
-    await page.getByLabel("Select all non-exception pending rows").check();
-    await expect(page.getByRole("button", { name: "Approve selected (5)" })).toBeEnabled();
-    await page.getByRole("button", { name: "Approve selected (5)" }).click();
+    await page.getByLabel("Select all 5 straightforward SKUs").check();
+    await page.getByRole("button", { name: "Approve 5 selected" }).click();
     await expect(page.getByText("Approved 5.")).toBeVisible();
-    await expect(page.getByRole("button", { name: "Release to procurement (6)" })).toBeEnabled();
+    await expect(page.getByRole("button", { name: "Send 6 to procurement" })).toBeEnabled();
+    await expect(page.getByText("All done. Every SKU has a decision.")).toBeVisible();
 
-    // Cancelling the confirmation releases nothing.
-    await page.getByRole("button", { name: "Release to procurement (6)" }).click();
-    await expect(page.getByRole("button", { name: "Release to procurement (6)" })).toBeEnabled();
+    // Cancelling the confirmation sends nothing.
+    await page.getByRole("button", { name: "Send 6 to procurement" }).click();
+    await expect(page.getByRole("button", { name: "Send 6 to procurement" })).toBeEnabled();
 
     page.removeAllListeners("dialog");
     page.once("dialog", (d) => d.accept());
-    await page.getByRole("button", { name: "Release to procurement (6)" }).click();
-    await expect(page.getByText("Released 6 recommendations to procurement.")).toBeVisible();
-    await expect(page.getByRole("button", { name: "Release to procurement (0)" })).toBeDisabled();
-    await expect(row(page, "SKU003")).toContainText("Released");
-    await expect(row(page, "SKU003").getByRole("button", { name: "Approve" })).toBeDisabled();
+    await page.getByRole("button", { name: "Send 6 to procurement" }).click();
+    await expect(page.getByText("Sent 6 order lines to procurement.")).toBeVisible();
+    await expect(page.getByRole("button", { name: "Send 0 to procurement" })).toBeDisabled();
+    await tab(page, "Decided").click();
+    await expect(item(page, "SKU003")).toContainText("Sent to procurement");
+
+    await page.goto("/overview");
+    await expect(page.getByRole("link", { name: /Plan sent/ })).toBeVisible();
   });
 
-  test("rerun after release is blocked with a clear message", async ({ page }) => {
-    await page.goto("/runs");
-    await page.getByRole("button", { name: "Run now" }).click();
+  test("rerun after sending is blocked with a clear message", async ({ page }) => {
+    await page.goto("/data");
+    await page.getByRole("button", { name: "Run planning" }).click();
     await expect(page.getByText(/already been released to procurement/)).toBeVisible();
   });
 
@@ -181,7 +205,7 @@ test.describe("planner", () => {
     await expect(week42.getByRole("cell").last()).toHaveText("7");
   });
 
-  test("settings: saving creates a new version and validates", async ({ page }) => {
+  test("rules: saving creates a new version and validates", async ({ page }) => {
     await page.goto("/settings");
     await expect(page.getByText("Version 1 (active)")).toBeVisible();
     await page.getByLabel("Average window (weeks)").fill("3");
@@ -217,7 +241,7 @@ test.describe("procurement", () => {
   });
 
   test("cannot reach planner screens", async ({ page }) => {
-    await page.goto("/queue");
+    await page.goto("/overview");
     await expect(page).toHaveURL(/\/procurement$/);
     await page.goto("/settings");
     await expect(page).toHaveURL(/\/procurement$/);
@@ -239,7 +263,7 @@ test.describe("viewer", () => {
   });
 
   test("cannot reach planner or procurement screens", async ({ page }) => {
-    for (const p of ["/queue", "/upload", "/procurement"]) {
+    for (const p of ["/overview", "/queue", "/data", "/upload", "/procurement"]) {
       await page.goto(p);
       await expect(page).toHaveURL(/\/dashboard$/);
     }

@@ -46,7 +46,7 @@ export function RunNowButton({ stale, staleMessage, disabled }: { stale: boolean
         </div>
       ) : (
         <button type="button" className={btn.primary} disabled={pending || disabled} onClick={() => (stale ? setConfirming(true) : run(false))}>
-          {pending ? "Running…" : "Run now"}
+          {pending ? "Planning…" : "Run planning"}
         </button>
       )}
       <div aria-live="polite">
@@ -56,8 +56,8 @@ export function RunNowButton({ stale, staleMessage, disabled }: { stale: boolean
             {result.ok ? (
               <>
                 {" "}
-                <a href="/queue" className="underline">
-                  Open the review queue
+                <a href="/overview" className="underline">
+                  See the plan
                 </a>
               </>
             ) : null}

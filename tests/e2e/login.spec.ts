@@ -37,7 +37,7 @@ test.describe("login", () => {
     await expect(page).toHaveURL(/\/login$/);
   });
 
-  test("keyboard only: one request on double submit, then the review queue", async ({ page }) => {
+  test("keyboard only: one request on double submit, then the overview", async ({ page }) => {
     const password = process.env.E2E_PASSWORD;
     test.skip(!password, "Set E2E_PASSWORD to test a successful sign-in");
     await page.goto("/login");
@@ -48,7 +48,7 @@ test.describe("login", () => {
     await page.keyboard.type(password!);
     await page.keyboard.press("Enter");
     await page.keyboard.press("Enter");
-    await expect(page).toHaveURL(/\/queue$/);
+    await expect(page).toHaveURL(/\/overview$/);
     expect(writes.count).toBe(1);
   });
 

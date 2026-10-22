@@ -3,6 +3,7 @@ import { createClient } from "@/lib/supabase/server";
 import { releasedItems } from "@/lib/services/procurement";
 import { fmtDateTime, fmtInt } from "@/lib/format";
 import { btn, EmptyState, PageHeader } from "@/components/ui";
+import { SkuImage } from "@/components/sku/SkuImage";
 
 export default async function ProcurementPage() {
   await requireRole(["planner", "procurement"]);
@@ -16,7 +17,7 @@ export default async function ProcurementPage() {
   return (
     <>
       <PageHeader
-        title="Approved orders for procurement"
+        title="Orders for procurement"
         description="Recommendations the demand planner has approved and released. Place these purchase orders in Zoho Inventory. Quantities are final."
         actions={
           items.length ? (
@@ -27,7 +28,7 @@ export default async function ProcurementPage() {
         }
       />
       {items.length === 0 ? (
-        <EmptyState title="Nothing released yet">The planner has not released any approved recommendations in the last 60 days.</EmptyState>
+        <EmptyState title="Nothing released yet">No approved orders have been sent in the last 60 days.</EmptyState>
       ) : (
         <div className="space-y-6">
           {[...batches].map(([releasedAt, list]) => (
@@ -49,7 +50,12 @@ export default async function ProcurementPage() {
                   {list.map((i) => (
                     <tr key={i.id}>
                       <td className="px-4 py-2 font-mono text-xs">{i.sku_id}</td>
-                      <td className="px-4 py-2">{i.sku_name}</td>
+                      <td className="px-4 py-2">
+                        <span className="flex items-center gap-3">
+                          <SkuImage skuId={i.sku_id} name={i.sku_name} size="xs" />
+                          {i.sku_name}
+                        </span>
+                      </td>
                       <td className="px-4 py-2">{i.distributor_id ?? "–"}</td>
                       <td className="px-4 py-2">{i.action}</td>
                       <td className="tabular px-4 py-2 text-right font-medium">{fmtInt(i.final_qty)}</td>

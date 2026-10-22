@@ -1,9 +1,9 @@
 import { authFile, hasSession } from "./auth";
 
 export const ROLE_PAGES = [
-  { role: "planner", path: "/queue", name: "queue" },
-  { role: "planner", path: "/upload", name: "upload" },
-  { role: "planner", path: "/runs", name: "runs" },
+  { role: "planner", path: "/overview", name: "overview" },
+  { role: "planner", path: "/queue", name: "review" },
+  { role: "planner", path: "/data", name: "data" },
   { role: "planner", path: "/backtest", name: "backtest" },
   { role: "planner", path: "/settings", name: "settings" },
   { role: "planner", path: "/dashboard", name: "dashboard-planner" },
