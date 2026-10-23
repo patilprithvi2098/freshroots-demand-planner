@@ -13,6 +13,8 @@ interface Ctx {
   /** Open a SKU. `list` is the order of the list it was opened from, for next / previous. */
   open: (id: string, list?: string[]) => void;
   notify: (text: string, ok?: boolean) => void;
+  /** Open the change-quantity or reject dialog straight from a list row. */
+  override: (id: string, mode: "edit" | "reject", qty?: number) => void;
 }
 
 const SkuContext = createContext<Ctx | null>(null);
@@ -27,7 +29,10 @@ export function SkuWorkspace({ rows, children }: { rows: SkuRow[]; children: Rea
   const router = useRouter();
   const [openId, setOpenId] = useState<string | null>(null);
   const [navIds, setNavIds] = useState<string[] | null>(null);
-  const [dialog, setDialog] = useState<{ mode: "edit" | "reject"; row: SkuRow } | null>(null);
+  // `n` gives every opening its own identity, so a late close event from the previous dialog
+  // (Escape then a quick shortcut key) cannot close or reuse the new one.
+  const [dialog, setDialog] = useState<{ mode: "edit" | "reject"; row: SkuRow; qty?: number; n: number } | null>(null);
+  const showDialog = useCallback((mode: "edit" | "reject", row: SkuRow, qty?: number) => setDialog({ mode, row, qty, n: Date.now() + Math.random() }), []);
   const [toast, setToast] = useState<{ text: string; ok: boolean } | null>(null);
 
   const notify = useCallback((text: string, ok = true) => {
@@ -40,13 +45,21 @@ export function SkuWorkspace({ rows, children }: { rows: SkuRow[]; children: Rea
     setOpenId(id);
   }, []);
 
+  const override = useCallback(
+    (id: string, mode: "edit" | "reject", qty?: number) => {
+      const r = rows.find((x) => x.id === id);
+      if (r) showDialog(mode, r, qty);
+    },
+    [rows, showDialog],
+  );
+
   const row = rows.find((r) => r.id === openId) ?? null;
   // Next and previous follow the list the SKU was opened from, so Raghav can work through it in the pop-up.
   const ids = navIds && row && navIds.includes(row.id) ? navIds : rows.map((r) => r.id);
   const idx = row ? ids.indexOf(row.id) : -1;
 
   return (
-    <SkuContext.Provider value={{ open, notify }}>
+    <SkuContext.Provider value={{ open, notify, override }}>
       {children}
       {row ? (
         <SkuModal
@@ -56,8 +69,8 @@ export function SkuWorkspace({ rows, children }: { rows: SkuRow[]; children: Rea
           onPrev={idx > 0 ? () => setOpenId(ids[idx - 1]) : undefined}
           onNext={idx < ids.length - 1 ? () => setOpenId(ids[idx + 1]) : undefined}
           onClose={() => setOpenId(null)}
-          onEdit={() => setDialog({ mode: "edit", row })}
-          onReject={() => setDialog({ mode: "reject", row })}
+          onEdit={() => showDialog("edit", row)}
+          onReject={() => showDialog("reject", row)}
           onDone={(text) => {
             notify(text);
             router.refresh();
@@ -66,9 +79,14 @@ export function SkuWorkspace({ rows, children }: { rows: SkuRow[]; children: Rea
       ) : null}
       {dialog ? (
         <OverrideDialog
+          key={dialog.n}
           mode={dialog.mode}
           row={dialog.row}
-          onClose={() => setDialog(null)}
+          initialQty={dialog.qty}
+          onClose={() => {
+            const n = dialog.n;
+            setDialog((d) => (d?.n === n ? null : d));
+          }}
           onDone={(text) => {
             setDialog(null);
             notify(text);

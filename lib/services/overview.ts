@@ -1,5 +1,6 @@
 import "server-only";
 import { overrideStats, repeatedOverrides } from "@/lib/metrics";
+import { buildHistory } from "@/lib/skuHistory";
 import { compareIsoWeeks, daysBetween, mondayOfIsoWeek, weekWindow } from "@/lib/rules/isoWeek";
 import type { RuleParams } from "@/lib/rules/types";
 import { toSkuRow, type SkuRow } from "@/lib/skuRow";
@@ -79,7 +80,7 @@ export async function loadPlanning(db: Db): Promise<PlanningData> {
       ? await fetchAll((a, b) =>
           db
             .from("recommendations")
-            .select("id, run_id, sku_id, sku_name, perishability, status, is_exception, demand_adj")
+            .select("id, run_id, sku_id, sku_name, perishability, status, is_exception, demand_adj, recommended_qty, final_qty, override_reason_code")
             .in("run_id", ids)
             .in("status", ["approved", "edited", "rejected"])
             .order("id")
@@ -87,7 +88,14 @@ export async function loadPlanning(db: Db): Promise<PlanningData> {
         )
       : [];
     const misfit = new Set(repeatedOverrides(overrideStats(recentRuns ?? [], decided), decided).map((r) => r.sku_id));
-    rows = recs.map((r) => toSkuRow(r, windows, misfit.has(r.sku_id)));
+    // His own decisions on each SKU in earlier runs, for the "you usually…" hints on the Review list.
+    const runDate = new Map((recentRuns ?? []).map((r) => [r.id, r.run_date]));
+    const history = buildHistory(
+      decided
+        .filter((d) => d.run_id !== runRow.id)
+        .map((d) => ({ ...d, run_date: runDate.get(d.run_id) ?? "" })),
+    );
+    rows = recs.map((r) => ({ ...toSkuRow(r, windows, misfit.has(r.sku_id)), history: history.get(r.sku_id) ?? null }));
   }
 
   // Demand trend: total units per week over the last 16 weeks of uploaded sales.

@@ -15,9 +15,22 @@ const REASONS: { value: string; label: string }[] = [
   { value: "other", label: "Other" },
 ];
 
-export function OverrideDialog({ mode, row, onClose, onDone }: { mode: "edit" | "reject"; row: SkuRow; onClose: () => void; onDone: (msg: string) => void }) {
+export function OverrideDialog({
+  mode,
+  row,
+  initialQty,
+  onClose,
+  onDone,
+}: {
+  mode: "edit" | "reject";
+  row: SkuRow;
+  /** Pre-filled quantity, e.g. Raghav's usual quantity for this SKU. */
+  initialQty?: number;
+  onClose: () => void;
+  onDone: (msg: string) => void;
+}) {
   const ref = useRef<HTMLDialogElement>(null);
-  const [qty, setQty] = useState(String(row.final_qty ?? row.recommended_qty ?? 0));
+  const [qty, setQty] = useState(String(initialQty ?? row.final_qty ?? row.recommended_qty ?? 0));
   const [reason, setReason] = useState(row.override_reason_code ?? "");
   const [note, setNote] = useState("");
   const [error, setError] = useState<string | null>(null);

@@ -1,5 +1,6 @@
 // The shape every screen uses for one SKU recommendation (review list, overview, pop-up).
 import type { RecommendationRow } from "@/lib/supabase/database.types";
+import type { SkuHistory } from "@/lib/skuHistory";
 
 export interface SkuRow {
   id: string;
@@ -38,6 +39,8 @@ export interface SkuRow {
   /** Units needed to reach the minimum cover (stockouts), or above the maximum (overstock). */
   gap_units: number | null;
   misfit: boolean;
+  /** Raghav's own recent decisions on this SKU (earlier runs only). */
+  history?: SkuHistory | null;
 }
 
 const num = (v: number | null) => (v == null ? null : Number(v));

@@ -7,10 +7,21 @@ export const VIEWS = [
   { key: "stockout", label: "Running low" },
   { key: "overstock", label: "Too much stock" },
   { key: "rising", label: "Demand rising" },
-  { key: "decided", label: "Decided" },
+  { key: "decided", label: "Done" },
   { key: "all", label: "All SKUs" },
 ] as const;
 export type View = (typeof VIEWS)[number]["key"];
+
+/** The three tabs shown as buttons; the rest sit in the "More" filter. */
+export const PRIMARY_VIEWS: View[] = ["todo", "judgement", "decided"];
+export const MORE_VIEWS: View[] = ["stockout", "overstock", "rising", "all"];
+
+/** Search by SKU code or any part of the name, ignoring case. */
+export function matchesSearch(r: { sku_id: string; sku_name: string }, q: string): boolean {
+  const term = q.trim().toLowerCase();
+  if (!term) return true;
+  return r.sku_id.toLowerCase().includes(term) || r.sku_name.toLowerCase().includes(term);
+}
 
 export const VIEW_FILTER: Record<View, (r: SkuRow) => boolean> = {
   todo: (r) => needsReview(r) && r.status === "pending" && !r.released_at,

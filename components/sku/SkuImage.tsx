@@ -1,7 +1,7 @@
 /* eslint-disable @next/next/no-img-element -- small static pack shots; next/image adds nothing here */
 "use client";
 
-import { useState } from "react";
+import { useEffect, useRef, useState } from "react";
 
 const SIZES = {
   xs: "h-12 w-12",
@@ -19,8 +19,15 @@ export function SkuImage({ skuId, size = "sm" }: { skuId: string; name?: string;
   const id = encodeURIComponent(skuId);
   const sources = [`/skus/${id}.webp`, `/skus/${id}.svg`, "/skus/_placeholder.svg"];
   const [attempt, setAttempt] = useState(0);
+  const ref = useRef<HTMLImageElement>(null);
+  // A missing photo can fail before React attaches onError (server-rendered <img>); catch that case too.
+  useEffect(() => {
+    const img = ref.current;
+    if (img && img.complete && img.naturalWidth === 0) setAttempt((a) => Math.min(a + 1, sources.length - 1));
+  }, [attempt, sources.length]);
   return (
     <img
+      ref={ref}
       src={sources[attempt]}
       alt=""
       loading="lazy"
