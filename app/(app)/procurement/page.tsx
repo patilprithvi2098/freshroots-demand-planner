@@ -4,6 +4,8 @@ import { releasedItems } from "@/lib/services/procurement";
 import { fmtDateTime, fmtInt } from "@/lib/format";
 import { btn, EmptyState, PageHeader } from "@/components/ui";
 import { SkuImage } from "@/components/sku/SkuImage";
+import { zohoConfigFromEnv } from "@/lib/integrations/zoho";
+import { ZohoOrderButtons } from "./ZohoOrderButtons";
 
 export default async function ProcurementPage() {
   await requireRole(["planner", "procurement"]);
@@ -13,17 +15,21 @@ export default async function ProcurementPage() {
     const key = i.released_at;
     batches.set(key, [...(batches.get(key) ?? []), i]);
   }
+  const notOrdered = items.filter((i) => i.final_qty > 0 && !i.zoho_po_number).length;
 
   return (
     <>
       <PageHeader
         title="Orders for procurement"
-        description="Recommendations the demand planner has approved and released. Place these purchase orders in Zoho Inventory. Quantities are final."
+        description="Recommendations the demand planner has approved and released. Create them as draft purchase orders in Zoho Inventory, then issue them there. Quantities are final."
         actions={
           items.length ? (
-            <a className={btn.primary} href="/api/procurement/export" download>
-              Export CSV
-            </a>
+            <div className="flex flex-col items-end gap-2">
+              <ZohoOrderButtons pendingLines={notOrdered} configured={zohoConfigFromEnv() != null} />
+              <a className={btn.secondary} href="/api/procurement/export" download>
+                Export CSV
+              </a>
+            </div>
           ) : null
         }
       />
@@ -44,6 +50,7 @@ export default async function ProcurementPage() {
                     <th scope="col" className="px-4 py-2">Distributor</th>
                     <th scope="col" className="px-4 py-2">Action</th>
                     <th scope="col" className="px-4 py-2 text-right">Final quantity</th>
+                    <th scope="col" className="px-4 py-2">Zoho PO</th>
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-neutral-100">
@@ -59,6 +66,17 @@ export default async function ProcurementPage() {
                       <td className="px-4 py-2">{i.distributor_id ?? "–"}</td>
                       <td className="px-4 py-2">{i.action}</td>
                       <td className="tabular px-4 py-2 text-right font-medium">{fmtInt(i.final_qty)}</td>
+                      <td className="px-4 py-2">
+                        {i.zoho_po_number ? (
+                          <span className="font-mono text-xs">{i.zoho_po_number}</span>
+                        ) : i.zoho_error ? (
+                          <span className="text-red-700">Failed: {i.zoho_error}</span>
+                        ) : i.final_qty > 0 ? (
+                          <span className="text-neutral-600">Not yet ordered</span>
+                        ) : (
+                          <span className="text-neutral-600">No order (pause)</span>
+                        )}
+                      </td>
                     </tr>
                   ))}
                 </tbody>

@@ -11,7 +11,14 @@ type Table<Row, Required extends keyof Row> = {
 };
 
 export type ProfileRow = { id: string; email: string; role: string; created_at: string };
-export type DistributorRow = { distributor_id: string; name: string; region: string; status: string; created_at: string };
+export type DistributorRow = {
+  distributor_id: string;
+  name: string;
+  region: string;
+  status: string;
+  zoho_vendor_id: string | null;
+  created_at: string;
+};
 export type SkuRow = {
   sku_id: string;
   name: string;
@@ -23,6 +30,7 @@ export type SkuRow = {
   launch_date: string | null;
   unit_price: number | null;
   lead_time_days: number | null;
+  zoho_item_id: string | null;
   created_at: string;
 };
 export type WeeklySalesRow = {
@@ -49,6 +57,7 @@ export type OpenPurchaseOrderRow = {
   ordered_date: string;
   expected_date: string | null;
   status: string;
+  source: string;
   created_at: string;
 };
 export type CalendarRow = { year_month: string; year: number; month: number; is_festival_month: boolean; created_at: string };
@@ -129,6 +138,11 @@ export type RecommendationRow = {
   override_reason_code: string | null;
   override_note: string | null;
   released_at: string | null;
+  zoho_po_id: string | null;
+  zoho_po_number: string | null;
+  zoho_po_reference: string | null;
+  zoho_ordered_at: string | null;
+  zoho_error: string | null;
   created_at: string;
 };
 export type AiCallRow = {

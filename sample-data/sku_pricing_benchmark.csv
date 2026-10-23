@@ -1,0 +1,17 @@
+SKU_ID,SKU_Name,Distributor_ID,Distributor_State,Perishability,Benchmark_MRP_INR,GST_Pct,Unit_Price_INR,Lead_Time_Days,Benchmark_Basis
+SKU001,Freshroots Mango Drink 200ml,DIST001,Maharashtra,Low,20,12,11.50,3,Mainstream mango drinks 200-250 ml retail at about Rs 15-20
+SKU002,Freshroots Oats Cookies 150g,DIST001,Maharashtra,Low,60,18,34.00,3,Branded oats cookies 150 g retail at about Rs 50-65
+SKU003,Freshroots Brown Rice 1kg,DIST002,Maharashtra,Low,165,5,105.00,3,Branded brown rice 1 kg retails at about Rs 150-190
+SKU004,Freshroots Almond Milk 500ml,DIST002,Maharashtra,High,150,12,88.00,2,Chilled almond milk 500 ml retails at about Rs 130-160
+SKU005,Freshroots Mixed Nuts 100g,DIST003,Karnataka,Low,180,5,110.00,6,Mixed nuts 100 g packs retail at about Rs 160-200
+SKU006,Freshroots Quinoa 500g,DIST003,Karnataka,Low,350,5,210.00,6,Branded quinoa 500 g retails at about Rs 300-400
+SKU007,Freshroots Coconut Water 330ml,DIST001,Maharashtra,High,60,12,35.00,2,Packaged coconut water 200-330 ml retails at about Rs 50-70
+SKU008,Freshroots Granola Bar 40g,DIST002,Maharashtra,Low,40,18,23.00,3,Single protein / granola bars 35-40 g retail at about Rs 35-50
+SKU009,Freshroots Chia Seeds 200g,DIST003,Karnataka,Low,180,5,100.00,6,Chia seeds 200-250 g retail at about Rs 160-220
+SKU010,Freshroots Apple Cider Vinegar 500ml,DIST004,Gujarat,Low,220,18,130.00,5,Branded apple cider vinegar 500 ml retails at about Rs 200-300
+SKU011,Freshroots Multigrain Bread 400g,DIST004,Gujarat,High,55,0,38.00,3,Branded multigrain bread 400 g retails at about Rs 50-60; thin bakery margins
+SKU012,Freshroots Herbal Tea 25 bags,DIST004,Gujarat,Low,180,5,105.00,5,Herbal / tulsi tea 25 bags retails at about Rs 170-200
+SKU013,Freshroots Peanut Butter 300g,DIST001,Maharashtra,Low,160,12,95.00,3,Peanut butter 300-350 g retails at about Rs 150-190
+SKU014,Freshroots Dark Chocolate 80g,DIST002,Maharashtra,Low,130,18,75.00,3,Dark chocolate bars 80-90 g retail at about Rs 110-150
+SKU015,Freshroots Honey 500g,DIST003,Karnataka,Low,230,5,135.00,6,Branded honey 500 g retails at about Rs 220-250
+SKU016,Freshroots Ragi Millet Cookies 150g,DIST002,Maharashtra,Low,70,18,42.00,3,Millet cookies 150 g retail at about Rs 60-75

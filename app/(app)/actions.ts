@@ -14,6 +14,8 @@ import { getActiveConfig, loadEngineInput } from "@/lib/services/engineInput";
 import * as review from "@/lib/services/review";
 import { RunBlockedError, startRun } from "@/lib/services/runs";
 import { checkFile, confirmUpload, previewUpload, type UploadPreview } from "@/lib/services/uploads";
+import { createAdminClient } from "@/lib/supabase/admin";
+import { placeZohoOrders, syncZohoStatuses, zohoClientFromEnv } from "@/lib/services/zohoOrders";
 
 export type ActionResult<T = undefined> = { ok: true; data: T; message?: string } | { ok: false; error: string; code?: string };
 
@@ -223,6 +225,50 @@ export async function saveConfigAction(params: unknown): Promise<ActionResult<{ 
     if (error) throw new Error(error.message);
     revalidatePath("/settings");
     return { ok: true, data: { version: data }, message: `Saved as version ${data}. New runs will use it.` };
+  } catch (e) {
+    return fail(e);
+  }
+}
+
+// ---------- Zoho Inventory ----------
+
+const ZOHO_NOT_CONFIGURED = "Zoho Inventory is not connected. Add the ZOHO_* settings (see scripts/zoho/connect.ts).";
+
+/**
+ * Create draft purchase orders in Zoho Inventory for released lines that have no PO yet.
+ * Procurement cannot write recommendations under RLS, so this uses the service client after the role check.
+ */
+export async function createZohoOrdersAction(): Promise<
+  ActionResult<{ created: number; reused: number; failed: number; problems: number }>
+> {
+  try {
+    const s = await assertRole(["planner", "procurement"]);
+    const client = zohoClientFromEnv();
+    if (!client) throw new Error(ZOHO_NOT_CONFIGURED);
+    const res = await placeZohoOrders(createAdminClient(), client, s.userId);
+    revalidatePath("/procurement");
+    const parts = [
+      res.created.length ? `Created ${res.created.length} draft PO${res.created.length === 1 ? "" : "s"} in Zoho Inventory (${res.created.map((c) => c.po_number).join(", ")}).` : "No new purchase orders.",
+      res.problems.length ? `${res.problems.length} line(s) need a Zoho item or vendor link first.` : "",
+      res.failed.length ? `${res.failed.length} PO(s) failed: ${res.failed.map((f) => `${f.distributor_id}: ${f.error}`).join("; ")}` : "",
+    ].filter(Boolean);
+    const data = { created: res.created.length, reused: res.reused, failed: res.failed.length, problems: res.problems.length };
+    if (res.failed.length && !res.created.length) return { ok: false, error: parts.join(" ") };
+    return { ok: true, data, message: parts.join(" ") };
+  } catch (e) {
+    return fail(e);
+  }
+}
+
+/** Pull PO status from Zoho so received orders stop counting as stock on order. */
+export async function syncZohoAction(): Promise<ActionResult<{ checked: number; changed: number }>> {
+  try {
+    await assertRole(["planner", "procurement"]);
+    const client = zohoClientFromEnv();
+    if (!client) throw new Error(ZOHO_NOT_CONFIGURED);
+    const res = await syncZohoStatuses(createAdminClient(), client);
+    revalidatePath("/procurement");
+    return { ok: true, data: res, message: `Checked ${res.checked} PO(s) in Zoho; ${res.changed} line(s) changed status.` };
   } catch (e) {
     return fail(e);
   }
