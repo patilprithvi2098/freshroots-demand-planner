@@ -58,7 +58,7 @@ export async function loadEngineInput(
         .order("as_of_date")
         .range(a, b),
     ),
-    fetchAll((a, b) => db.from("open_purchase_orders").select("sku_id, qty, status").order("po_id").range(a, b)),
+    fetchAll((a, b) => db.from("open_purchase_orders").select("sku_id, qty, status, ordered_date, expected_date").order("po_id").range(a, b)),
     fetchAll((a, b) => db.from("calendar").select("year_month, is_festival_month").order("year_month").range(a, b)),
   ]);
 

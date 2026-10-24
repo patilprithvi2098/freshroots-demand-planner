@@ -4,7 +4,7 @@
 
 import { isFlagged, runEngine } from "./engine";
 import { addIsoWeeks, compareIsoWeeks, mondayOfIsoWeek, weekWindow, yearMonthOf } from "./isoWeek";
-import type { EngineInput, Flag, RecommendedAction } from "./types";
+import type { EngineInput, Flag, OpenPoInput, RecommendedAction } from "./types";
 
 export interface HistoricalDecision {
   sku_id: string;
@@ -77,11 +77,13 @@ export function runBacktest(
     const inventory = base.inventory.filter((i) => i.as_of_date <= asOf && i.as_of_date >= minDate);
     const haveInventory = new Set(inventory.map((i) => i.sku_id));
     const mode: BacktestWeek["mode"] = base.skus.some((s) => haveInventory.has(s.sku_id)) ? "full" : "trend_only";
+    // Only the POs that were open on that week's as-of date: today's open POs must not leak into the past.
+    const openPurchaseOrders = posOpenAt(base.openPurchaseOrders, asOf);
 
     let stats = { sku_count: 0, stockout_risk: 0, overstock_risk: 0, high_demand: 0, exceptions: 0, flagged: 0 };
 
     if (mode === "full") {
-      const res = runEngine({ ...base, asOfDate: asOf, inventory });
+      const res = runEngine({ ...base, asOfDate: asOf, inventory, openPurchaseOrders });
       for (const r of res.recommendations) {
         stats.sku_count++;
         if (r.flags.includes("stockout_risk")) stats.stockout_risk++;
@@ -128,6 +130,25 @@ export function runBacktest(
     non_festival_flag_share: share(weeks.filter((w) => !w.festival)),
     agreement: { compared, agreed, pct: compared === 0 ? null : agreed / compared, note },
   };
+}
+
+const OPEN = new Set(["open", "ordered", "in_transit", "partially_received"]);
+
+/**
+ * POs open on a past as-of date: ordered before that date, and arriving on or after it (the stock
+ * snapshot taken that morning does not include that day's delivery yet). A PO without an order date
+ * can't be placed in time, so it is left out and cover excludes stock on order for that week.
+ */
+export function posOpenAt(pos: OpenPoInput[] | null | undefined, asOf: string): OpenPoInput[] | null {
+  if (pos == null) return null;
+  return pos
+    .filter((p) => {
+      if (!p.ordered_date || p.ordered_date >= asOf) return false;
+      if (OPEN.has(p.status.toLowerCase()) && !p.received_date) return true;
+      const arrived = p.received_date ?? p.expected_date ?? null;
+      return arrived != null && arrived >= asOf;
+    })
+    .map((p) => ({ ...p, status: "open" }));
 }
 
 function trendOnlyWeek(base: Omit<EngineInput, "asOfDate">, week: string, flags: BacktestFlag[]) {

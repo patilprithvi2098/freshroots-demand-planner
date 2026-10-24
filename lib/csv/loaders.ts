@@ -3,7 +3,7 @@
 
 import Papa from "papaparse";
 import { z } from "zod";
-import { compareIsoWeeks, isValidIsoWeek, weekWindow } from "@/lib/rules/isoWeek";
+import { addIsoWeeks, compareIsoWeeks, isValidIsoWeek } from "@/lib/rules/isoWeek";
 
 export const MAX_UPLOAD_BYTES = 10 * 1024 * 1024;
 export const MAX_UPLOAD_ROWS = 200_000;
@@ -343,6 +343,10 @@ export function parseCsv<K extends FileType>(fileType: K, text: string): LoadRes
   };
 
   const clean = text.replace(/^﻿/, "");
+  if (clean.trim() === "") {
+    result.errors.push({ row: 1, message: "The file is empty." });
+    return result;
+  }
   const parsed = Papa.parse<Record<string, string>>(clean, {
     header: true,
     skipEmptyLines: "greedy",
@@ -415,9 +419,9 @@ export function salesGapWarnings(rows: WeeklySalesRow[]): string[] {
     const sorted = [...weeks].sort(compareIsoWeeks);
     const first = sorted[0];
     const last = sorted[sorted.length - 1];
-    let span = 1;
-    while (weekWindow(last, span)[0] !== first && span < 600) span++;
-    const missing = weekWindow(last, span).filter((w) => !weeks.has(w));
+    // One pass from first to last week: linear in the span, with no cap on history length.
+    const missing: string[] = [];
+    for (let w = first; compareIsoWeeks(w, last) < 0; w = addIsoWeeks(w, 1)) if (!weeks.has(w)) missing.push(w);
     if (missing.length) {
       warnings.push(
         `${sku}: ${missing.length} week(s) missing between ${first} and ${last} (${missing.slice(0, 6).join(", ")}${missing.length > 6 ? ", …" : ""}). They are not filled with zeros.`,

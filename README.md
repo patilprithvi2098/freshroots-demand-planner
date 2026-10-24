@@ -7,18 +7,36 @@ rejects every recommendation before anything reaches procurement.
 **Goal:** cut combined stockout and write-off loss from ₹28–34 lakh to ₹25 lakh or below per quarter
 within two full quarters of going live.
 
+- **Why this problem first:** [docs/decision.md](docs/decision.md) compares the three areas against the nine checks and the pre-build checklist.
+- **Does the logic work:** [docs/stress-test.md](docs/stress-test.md) covers the training, test and actual data, plus the fixes applied.
+- **Live app:** https://freshroots-demand-planner.vercel.app (login details are in the submission, not in this repo).
+
+### For reviewers
+
+Restore the demo plan at any time (it clears runs and decisions, reloads the sample files, runs planning
+and the backtest):
+
+```bash
+npm run demo-reset -- --yes
+```
+
 ## How it fits together
 
 | Lane | Trigger | Input | Context | Processing | Output |
 |---|---|---|---|---|---|
-| Raghav (planner) | Opens the review queue | | | | Approves, edits or rejects |
+| Raghav (planner) | Opens the Overview | | | | Approves, changes or rejects |
 | Scheduler (Phase 3) | Tuesday and Friday 06:00 IST | | | | |
-| SAP and Zoho | | Sales, stock, open POs (CSV upload in Phases 1–2) | Festival calendar, lead times | | |
-| Rules engine (`lib/rules/`) | | | | Applies the five rules | Flagged SKUs, quantities, rule trace |
-| Claude Sonnet 5.5 (`lib/ai/`) | | | | Explains the exceptions only | Rationale + "check this first" per SKU |
+| SAP and Zoho | | Sales, **weekly stock snapshots, PO history with ordered and received dates** (CSV upload in Phases 1–2) | Festival calendar | | |
+| Rules engine (`lib/rules/`) | | | Lead times are loaded and shown to Claude but **not used by the rules yet** (a rule change for Raghav to agree) | Applies the five rules | Flagged SKUs, quantities, rule trace |
+| Claude Sonnet 5.5 (`lib/ai/`) | | | | Explains the exceptions only | Rationale + "check this first" per SKU, **up to 80 per run in queue order; the rest get the rule-based explanation** |
 | Database and web app | | | Past history and overrides | | Review queue, results stored |
-| Procurement | | | | | Places the PO in Zoho |
-| Raghav as reviewer | | | | Steps in on exceptions | |
+| Procurement | | | | | Places the PO in Zoho (released orders can be created as Zoho draft POs) |
+| Raghav as reviewer | | | | **Reviews every flagged SKU**: bulk-approves rule-governed ones, investigates exceptions | |
+| **Outcome tracker (Phase 3, new)** | 4 weeks after each run | Sales and stock since the run | | Compares each flag with what happened (stockout, write-off) | `outcomes` table → Performance page and the ₹28 lakh and agreement kill criteria |
+
+Changes in **bold** come from the stress test ([docs/stress-test.md](docs/stress-test.md)): the backtest needs
+dated PO history to measure agreement correctly, a typical run has about 149 flagged SKUs but only about 21
+exceptions, festival weeks can exceed the 80-call AI cap, and outcomes need their own job.
 
 The AI never sets or changes a quantity. If it fails or the spend cap is hit, the queue shows
 "Rationale unavailable" and everything else still works.

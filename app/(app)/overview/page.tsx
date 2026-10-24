@@ -159,7 +159,12 @@ function CycleCard({ p, reviewCount, decided, releasable, released }: { p: Plann
   const reviewed = ran && reviewCount > 0 && decided === reviewCount;
   const done = ran && released > 0 && releasable === 0 && decided === reviewCount;
   const steps = [
-    { label: "Fresh data", done: dataReady && !stale, note: stale ? "Stock file is old" : dataReady ? "SAP files loaded" : "Upload SAP files" },
+    {
+      label: "Fresh data",
+      // Old stock counts once the plan has been run on it (the planner confirmed it).
+      done: dataReady && (!stale || ran),
+      note: stale ? (ran ? "Old stock, confirmed" : "Stock file is old") : dataReady ? "SAP files loaded" : "Upload SAP files",
+    },
     { label: "Run the rules", done: ran, note: ran ? `Ran ${fmtDateTime(p.run!.run_date)}` : p.newDataSinceRun ? "New data waiting" : "Not run yet" },
     { label: "Review", done: reviewed, note: ran ? `${decided} of ${reviewCount} decided` : "After the run" },
     { label: "Send to procurement", done, note: released ? `${released} sent` : releasable ? `${releasable} ready to send` : "After review" },

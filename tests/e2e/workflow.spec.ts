@@ -16,6 +16,16 @@ const zone = (page: Page, label: string) => page.locator("section").filter({ has
 const item = (page: Page, sku: string) => page.locator(`li[data-sku="${sku}"]`);
 const tab = (page: Page, name: string) => page.getByRole("tab", { name: new RegExp(`^${name}`) });
 
+/** The sample stock is dated 19 Oct 2026; once it is more than 4 days old, planning asks for a confirmation. */
+async function confirmOldStock(page: Page, button: string) {
+  const confirm = page.getByRole("button", { name: button });
+  const shown = await confirm.waitFor({ timeout: 3_000 }).then(
+    () => true,
+    () => false,
+  );
+  if (shown) await confirm.click();
+}
+
 test.beforeAll(() => {
   execFileSync("npx", ["tsx", "--env-file=.env.local", "scripts/e2e-reset.ts"], { stdio: "inherit", env: process.env });
 });
@@ -59,6 +69,7 @@ test.describe("planner", () => {
     await page.goto("/overview");
     await expect(page.getByText("No plan yet for this cycle")).toBeVisible();
     await page.getByRole("button", { name: "Run planning" }).click();
+    await confirmOldStock(page, "Yes, plan");
     await expect(page.getByText(/7 SKUs flagged, 2 exceptions/)).toBeVisible({ timeout: 60_000 });
     await page.reload();
     await expect(page.getByRole("link", { name: /Running low\s*5\s*SKUs/ })).toBeVisible();
@@ -78,7 +89,8 @@ test.describe("planner", () => {
   test("review: ranking, tabs and the SKU pop-up", async ({ page }) => {
     await page.goto("/queue");
     const order = await page.locator("li[data-sku]").evaluateAll((els) => els.map((e) => e.getAttribute("data-sku")));
-    expect(order).toEqual(["SKU011", "SKU004", "SKU013", "SKU001", "SKU003", "SKU006", "SKU007"]);
+    // "To decide" pins judgement SKUs first, then the rule ranking (lowest cover first, ties by SKU code).
+    expect(order).toEqual(["SKU001", "SKU007", "SKU011", "SKU004", "SKU013", "SKU003", "SKU006"]);
 
     // Judgement SKUs are marked and cannot be bulk-selected.
     await expect(item(page, "SKU001")).toContainText("Needs judgement");
@@ -90,9 +102,9 @@ test.describe("planner", () => {
 
     await tab(page, "Needs judgement").click();
     await expect(page.locator("li[data-sku]")).toHaveCount(2);
-    await tab(page, "Too much stock").click();
+    await page.getByLabel("More filters").selectOption("overstock");
     await expect(page.locator("li[data-sku]")).toHaveCount(2);
-    await tab(page, "All SKUs").click();
+    await page.getByLabel("More filters").selectOption("all");
     await expect(page.locator("li[data-sku]")).toHaveCount(15);
     await tab(page, "To decide").click();
 
@@ -102,10 +114,10 @@ test.describe("planner", () => {
     await expect(panel).toContainText("900 units last 3.4 weeks at 269 a week (festival demand), below the 6-week minimum. Suggested: order 750 units now.");
     await expect(panel).toContainText("Festival month: demand raised 25% from 214.9 to 268.6 units a week.");
     await expect(panel).toContainText("Reorder now at 1.5x the standard 500 = 750 units.");
-    await expect(panel).toContainText("4 of 7");
-    // Arrow keys move to the next SKU in the list.
+    await expect(panel).toContainText("1 of 7");
+    // Arrow keys move to the next SKU in the list (judgement SKUs first: Mango Drink, then Coconut Water).
     await page.keyboard.press("ArrowRight");
-    await expect(page.getByRole("dialog", { name: "Freshroots Brown Rice 1kg" })).toBeVisible();
+    await expect(page.getByRole("dialog", { name: "Freshroots Coconut Water 330ml" })).toBeVisible();
     // Rationales are written after the run; accept either outcome.
     await page.keyboard.press("ArrowLeft");
     await expect
@@ -130,7 +142,7 @@ test.describe("planner", () => {
     await page.goto("/queue");
     const writes = countWrites(page, "/queue");
     await page.getByRole("button", { name: "Open details for SKU001" }).click();
-    await page.getByRole("button", { name: "Change quantity" }).click();
+    await page.getByRole("dialog", { name: "Freshroots Mango Drink 200ml" }).getByRole("button", { name: "Change quantity", exact: true }).click();
     const dialog = page.getByRole("dialog", { name: "Edit quantity for SKU001" });
     await expect(dialog.getByLabel("Final quantity")).toHaveValue("750");
 
@@ -152,7 +164,7 @@ test.describe("planner", () => {
     await dialog.getByRole("button", { name: "Save edit" }).click();
     await expect(page.getByText("SKU001 edited to 600.")).toBeVisible();
     await page.keyboard.press("Escape");
-    await tab(page, "Decided").click();
+    await tab(page, "Done").click();
     await expect(item(page, "SKU001")).toContainText("Changed");
     await expect(item(page, "SKU001")).toContainText("→ 600");
 
@@ -183,7 +195,7 @@ test.describe("planner", () => {
     await page.getByRole("button", { name: "Send 6 to procurement" }).click();
     await expect(page.getByText("Sent 6 order lines to procurement.")).toBeVisible();
     await expect(page.getByRole("button", { name: "Send 0 to procurement" })).toBeDisabled();
-    await tab(page, "Decided").click();
+    await tab(page, "Done").click();
     await expect(item(page, "SKU003")).toContainText("Sent to procurement");
 
     await page.goto("/overview");
@@ -193,6 +205,7 @@ test.describe("planner", () => {
   test("rerun after sending is blocked with a clear message", async ({ page }) => {
     await page.goto("/data");
     await page.getByRole("button", { name: "Run planning" }).click();
+    await confirmOldStock(page, "Yes, run anyway");
     await expect(page.getByText(/already been released to procurement/)).toBeVisible();
   });
 

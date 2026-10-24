@@ -57,9 +57,10 @@ function indexSales(input: EngineInput): Map<string, SkuSales> {
 /** Latest snapshot per (sku, location) on or before the as-of date, summed per SKU. */
 function indexInventory(input: EngineInput): Map<string, { units: number; as_of: string }> {
   const latest = new Map<string, { units: number; as_of: string }>();
-  input.inventory.forEach((row, i) => {
+  input.inventory.forEach((row) => {
     if (row.as_of_date > input.asOfDate) return;
-    const key = `${row.sku_id}\u0000${row.location ?? i}`;
+    // Rows without a location are one location, so a later snapshot replaces an earlier one instead of adding to it.
+    const key = `${row.sku_id}\u0000${row.location ?? ""}`;
     const prev = latest.get(key);
     if (!prev || row.as_of_date >= prev.as_of) latest.set(key, { units: row.units_on_hand, as_of: row.as_of_date });
   });

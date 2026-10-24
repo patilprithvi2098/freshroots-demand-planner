@@ -16,7 +16,8 @@
     "test:e2e": "playwright test",
     "test:e2e:report": "playwright show-report",
     "delete-user": "tsx --env-file=.env.local scripts/delete-user.ts",
-    "sku-images": "tsx scripts/generate-sku-images.ts"
+    "sku-images": "tsx scripts/generate-sku-images.ts",
+    "demo-reset": "tsx --conditions=react-server --env-file=.env.local scripts/demo-reset.ts"
   },
   "dependencies": {
     "@anthropic-ai/sdk": "^1.1.0",

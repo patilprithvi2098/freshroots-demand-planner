@@ -43,12 +43,11 @@ describe("empty files", () => {
   it.each(FILE_TYPES.map((f) => f.type))("%s: an empty file gives an error, not a crash", (type) => {
     const r = parseCsv(type, "");
     expect(r.rows).toEqual([]);
-    expect(r.errors.some((e) => /Missing required column/.test(e.message))).toBe(true);
+    expect(r.errors).toEqual([{ row: 1, message: "The file is empty." }]);
   });
 
-  it("FINDING: an empty file's first error is PapaParse's delimiter message on a 'row 2' that does not exist", () => {
-    const r = parseCsv("weekly_sales", "");
-    expect(r.errors[0]).toEqual({ row: 2, message: "Unable to auto-detect delimiting character; defaulted to ','" });
+  it("fixed (finding 8): an empty file says so, instead of PapaParse's delimiter message on a row that does not exist", () => {
+    expect(parseCsv("weekly_sales", "   \n").errors).toEqual([{ row: 1, message: "The file is empty." }]);
   });
 
   it("header-only files load zero rows without errors", () => {
@@ -102,17 +101,17 @@ describe("load: a 200,000-row weekly sales file through parseCsv", () => {
     expect(r.errors).toEqual([{ row: 1, message: `File has ${MAX_UPLOAD_ROWS + 1} rows; the limit is ${MAX_UPLOAD_ROWS}.` }]);
   }, 60_000);
 
-  it("FINDING: the gap scan alone dominates parse time on a long history (one SKU, 600 weeks)", () => {
-    // salesGapWarnings grows a window one week at a time and rebuilds it each step: O(span²) per SKU,
-    // and it stops at 600 weeks, so longer histories are silently mis-measured.
+  it("fixed (finding 2): the gap scan is linear and has no 600-week cap", () => {
+    // Previously O(span²) per SKU and capped at 600 weeks, so a gap in a longer history went unreported.
     const long = weekRange("2015-W01", labelOfMs(mondayMs("2015-W01") + 649 * WEEK_MS));
     const text = ["SKU_ID,Week,Units_Sold", ...long.filter((_, i) => i !== 5).map((w) => `X,${w},10`)].join("\n");
     const t0 = performance.now();
     const r = parseCsv("weekly_sales", text);
     timings.gap_scan_650_weeks_ms = performance.now() - t0;
     console.log(`one SKU, 649 rows over 650 weeks: ${Math.round(timings.gap_scan_650_weeks_ms)} ms; warnings:`, r.warnings);
-    // The missing week (index 5) is outside the 600-week reach, so no gap warning is raised at all.
-    expect(r.warnings.filter((w) => w.includes("missing"))).toEqual([]);
+    // The missing week (index 5) is more than 600 weeks back and is now reported.
+    expect(r.warnings.filter((w) => w.includes("1 week(s) missing"))).toHaveLength(1);
+    expect(timings.gap_scan_650_weeks_ms).toBeLessThan(500);
   }, 120_000);
 });
 
@@ -211,7 +210,7 @@ describe("every optional column absent", () => {
 });
 
 describe("questionable inputs found while stress testing", () => {
-  it("FINDING: inventory rows without a location are summed across dates (engine.ts:62)", () => {
+  it("fixed (finding 3): inventory rows without a location are one location; the latest snapshot wins", () => {
     const weeks = weekRange("2026-W27", "2026-W42");
     const res = runEngine(
       input({
@@ -223,8 +222,8 @@ describe("questionable inputs found while stress testing", () => {
         ],
       }),
     );
-    // Two snapshots of the same stock a week apart count as 600 units, not the latest 300.
-    expect(res.recommendations[0].units_on_hand).toBe(600);
+    // Two snapshots of the same stock a week apart: the latest 300, not 600.
+    expect(res.recommendations[0].units_on_hand).toBe(300);
   });
 
   it("FINDING: Lead_Time_Days is loaded but never used by the rules", () => {

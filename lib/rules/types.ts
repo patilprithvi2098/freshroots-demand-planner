@@ -72,6 +72,11 @@ export interface OpenPoInput {
   sku_id: string;
   qty: number;
   status: string;
+  /** Needed by the backtest to know which POs were open in a past week. Live runs ignore the dates. */
+  ordered_date?: string | null;
+  /** When it arrived (or is due). A received PO counts as open before this date. */
+  expected_date?: string | null;
+  received_date?: string | null;
 }
 
 export interface EngineInput {

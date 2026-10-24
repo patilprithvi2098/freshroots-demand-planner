@@ -54,13 +54,15 @@ export function CycleActions({
   }
 
   let action: React.ReactNode;
-  if (step === 0 || !canRun) {
+  // Old stock still allows planning after a confirmation, so treat it like the run step.
+  const runStep = step === 1 || (step === 0 && canRun && stale);
+  if (!canRun) {
     action = (
       <Link href="/data" className={btn.primary}>
         Upload SAP files <ArrowRight aria-hidden className="ml-1.5 h-4 w-4" />
       </Link>
     );
-  } else if (step === 1) {
+  } else if (runStep) {
     action = confirmStale ? (
       <div role="alertdialog" aria-labelledby="stale-q" className="max-w-xs rounded-xl border border-amber-300 bg-amber-50 p-3 text-sm text-amber-950">
         <p id="stale-q" className="font-medium">
@@ -76,9 +78,16 @@ export function CycleActions({
         </div>
       </div>
     ) : (
-      <button type="button" className={btn.primary} disabled={pending} onClick={() => (stale ? setConfirmStale(true) : run(false))}>
-        <Play aria-hidden className="mr-1.5 h-4 w-4" /> {pending ? "Planning…" : "Run planning"}
-      </button>
+      <div className="flex flex-col items-end gap-1">
+        <button type="button" className={btn.primary} disabled={pending} onClick={() => (stale ? setConfirmStale(true) : run(false))}>
+          <Play aria-hidden className="mr-1.5 h-4 w-4" /> {pending ? "Planning…" : "Run planning"}
+        </button>
+        {stale ? (
+          <Link href="/data" className="text-xs font-medium text-emerald-800 hover:underline">
+            or upload a fresh stock file first
+          </Link>
+        ) : null}
+      </div>
     );
   } else if (step === 2) {
     action = (

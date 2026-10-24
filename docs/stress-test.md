@@ -30,6 +30,16 @@ npx tsx scripts/stress/generate.ts   # optional: write the synthetic CSVs + grou
     one run, above the 80-call AI cap.
 - **Components map: yes, it needs changes.** See the last section.
 
+## Fixes applied after the first run (2026-10-24)
+
+| Finding | Status | Result |
+|---|---|---|
+| 1. Backtest used today's open POs for every past week | **Fixed** in `lib/rules/backtest.ts` (`posOpenAt`): each replayed week only counts POs ordered before its as-of date and arriving on or after it. `OpenPoInput` now carries `ordered_date`, `expected_date` and optional `received_date`. | With dated PO history, 0 of 20,887 test SKU-weeks differ from the time-correct replay, and planner agreement reads **80.6%** (was 54.8%). Without PO history, agreement is still understated (54.8%), which is why the map now asks for PO history. |
+| 2. Quadratic gap scan in the sales loader | **Fixed** in `lib/csv/loaders.ts`: one linear pass, no 600-week cap. | 156k-row sales file parses in ~0.4 s (was 7.2 s). A gap 650 weeks back is now reported. |
+| 3. Inventory rows without a location summed across dates | **Fixed** in `lib/rules/engine.ts`: a missing location is one location, so the latest snapshot wins. | 300 units, not 600. |
+| 8. Empty upload showed PapaParse's delimiter error | **Fixed**: "The file is empty." on row 1. | |
+| 4–7, 9. Rule-design questions (festival uplift timing, trend on censored sales, lead time, quantity vs cover, exception rate) | **Open**: these change Raghav's documented rules, so they need his agreement first. | Tests named `FINDING:` still pin the current behaviour. |
+
 ## Method
 
 | Set | Source | Weeks | Use |

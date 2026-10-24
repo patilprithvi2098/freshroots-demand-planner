@@ -62,10 +62,10 @@ describe("TEST set: loaders at full scale", () => {
     expect(mismatches).toBe(0);
   });
 
-  it("FINDING: salesGapWarnings is quadratic — parsing the 156k-row sales file takes seconds", () => {
+  it("fixed (finding 2): parsing the 156k-row sales file takes well under the old 7 seconds", () => {
     console.log("parseCsv ms by file:", L.loadMs);
-    // Papa + Zod alone take well under a second; the gap scan dominates (lib/csv/loaders.ts:419).
-    expect(L.loadMs.weekly_sales).toBeGreaterThan(1500);
+    // Was ~7 s, dominated by the quadratic gap scan; now Papa + Zod dominate.
+    expect(L.loadMs.weekly_sales).toBeLessThan(3000);
   });
 });
 
@@ -174,7 +174,7 @@ describe("TEST set: runBacktest at full scale (157 weeks, weekly stock snapshots
     expect(ms).toBeLessThan(30_000);
   }, 120_000);
 
-  it("FINDING: runBacktest applies today's open POs to every past week (no PO dates in OpenPoInput)", () => {
+  it("fixed (finding 1): runBacktest only counts POs open in each replayed week, so it matches a time-correct replay", () => {
     const inventory = [...L.inventoryByDate.values()].flat();
     // As an upload would: the PO file with statuses as of the latest date.
     const bt = runBacktest({ ...L.base, inventory, openPurchaseOrders: L.csvPoRows });
@@ -207,7 +207,9 @@ describe("TEST set: runBacktest at full scale (157 weeks, weekly stock snapshots
     const agreement = { time_correct: agreeTrue / nTrue, time_correct_n: nTrue, backtest_no_pos: btTest.agreement.pct, backtest_n: btTest.agreement.compared };
     console.log(`agreement with the simulated planner on test weeks: time-correct ${pct(agreement.time_correct)} vs runBacktest ${pct(agreement.backtest_no_pos)}`);
     saveResult("backtest-po-leak", { differ, compared, agreement, test_weeks: testWeeks.size });
-    expect(differ).toBeGreaterThan(0);
+    // With dated PO history the backtest gives every SKU-week the same primary flag as the time-correct replay.
+    expect(differ).toBe(0);
+    // Without PO history, stock on order is missing and agreement is understated: the reason to load PO history.
     expect(agreement.time_correct).toBeGreaterThan(agreement.backtest_no_pos!);
   }, 120_000);
 });
