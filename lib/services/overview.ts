@@ -4,6 +4,8 @@ import { buildHistory } from "@/lib/skuHistory";
 import { compareIsoWeeks, daysBetween, mondayOfIsoWeek, weekWindow } from "@/lib/rules/isoWeek";
 import type { RuleParams } from "@/lib/rules/types";
 import { toSkuRow, type SkuRow } from "@/lib/skuRow";
+import type { PastOutcome } from "@/lib/outcomes";
+import { outcomeHistory } from "./outcomeJob";
 import { fetchAll, todayIst, type Db } from "./db";
 import { getActiveConfig, getDataFreshness } from "./engineInput";
 
@@ -95,7 +97,13 @@ export async function loadPlanning(db: Db): Promise<PlanningData> {
         .filter((d) => d.run_id !== runRow.id)
         .map((d) => ({ ...d, run_date: runDate.get(d.run_id) ?? "" })),
     );
-    rows = recs.map((r) => ({ ...toSkuRow(r, windows, misfit.has(r.sku_id)), history: history.get(r.sku_id) ?? null }));
+    // Outcome loop, Retrieve: the last three measured results per SKU.
+    const outcomes = await outcomeHistory(db, recs.map((r) => r.sku_id)).catch(() => new Map<string, PastOutcome[]>());
+    rows = recs.map((r) => ({
+      ...toSkuRow(r, windows, misfit.has(r.sku_id)),
+      history: history.get(r.sku_id) ?? null,
+      past_outcomes: outcomes.get(r.sku_id) ?? [],
+    }));
   }
 
   // Demand trend: total units per week over the last 16 weeks of uploaded sales.

@@ -160,3 +160,22 @@ export function hitRates(outcomes: Pick<Outcome, "result" | "driver">[]): HitRat
   };
   return { decisions: outcomes.length, rule: part("rule"), override: part("override") };
 }
+
+/** One past outcome for a SKU, as shown in the pop-up and passed to Claude. No notes, no identities. */
+export interface PastOutcome {
+  as_of_date: string;
+  result: string;
+  driver: string;
+  recommended_qty: number | null;
+  final_qty: number | null;
+  stockout_weeks: number;
+  written_off_units: number | null;
+  summary: string;
+}
+
+export const RESULT_LABEL: Record<string, string> = {
+  stocked_out: "Ran out",
+  wrote_off: "Written off",
+  overstocked: "Too much left",
+  ok: "Went fine",
+};

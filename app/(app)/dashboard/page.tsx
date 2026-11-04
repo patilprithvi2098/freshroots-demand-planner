@@ -96,6 +96,54 @@ export default async function DashboardPage() {
         </Card>
       </div>
 
+      <Card className="mb-6">
+        <h2 className="font-semibold">Did the decisions work?</h2>
+        <p className="mb-4 text-sm text-neutral-600">
+          Four weeks after each decision, the next SAP uploads show whether the SKU ran out, was written off, or was left with too much stock.
+          This compares the rule&apos;s suggestion, when approved, with Raghav&apos;s changes.
+        </p>
+        {d.outcome_loop.measured === 0 ? (
+          <EmptyState title="No outcomes measured yet">
+            A decision is measured once four more weeks of sales have been uploaded after its run. Upload SAP sales and stock as usual; this fills
+            in by itself.
+          </EmptyState>
+        ) : (
+          <div className="grid gap-4 md:grid-cols-3">
+            <div className="rounded-xl border border-neutral-200 p-4">
+              <p className="text-xs uppercase text-neutral-600">Rule as suggested</p>
+              <p className="tabular mt-1 text-2xl font-semibold">{fmtPct(d.outcome_loop.rule.rate)}</p>
+              <p className="text-xs text-neutral-600">
+                went fine ({d.outcome_loop.rule.ok} of {d.outcome_loop.rule.n})
+              </p>
+            </div>
+            <div className="rounded-xl border border-neutral-200 p-4">
+              <p className="text-xs uppercase text-neutral-600">Raghav&apos;s changes</p>
+              <p className="tabular mt-1 text-2xl font-semibold">{fmtPct(d.outcome_loop.override.rate)}</p>
+              <p className="text-xs text-neutral-600">
+                went fine ({d.outcome_loop.override.ok} of {d.outcome_loop.override.n})
+              </p>
+            </div>
+            <div className="rounded-xl border border-neutral-200 p-4">
+              <p className="text-xs uppercase text-neutral-600">Rule keeps missing</p>
+              {d.outcome_loop.rule_misses.length === 0 ? (
+                <p className="mt-1 text-sm text-neutral-700">No SKU yet.</p>
+              ) : (
+                <ul className="mt-1 space-y-1 text-sm">
+                  {d.outcome_loop.rule_misses.slice(0, 5).map((m) => (
+                    <li key={m.sku_id} className="flex justify-between gap-2">
+                      <span className="truncate">{m.sku_name.replace(/^Freshroots\s+/i, "")}</span>
+                      <span className="tabular shrink-0 text-red-700">
+                        {m.misses} of {m.of}
+                      </span>
+                    </li>
+                  ))}
+                </ul>
+              )}
+            </div>
+          </div>
+        )}
+      </Card>
+
       <div className="grid gap-6 lg:grid-cols-2">
         <Card>
           <h2 className="mb-3 font-semibold">Override rate by run</h2>

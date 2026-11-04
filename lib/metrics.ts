@@ -30,6 +30,17 @@ export interface MetricOutcome {
   measured_at: string;
   stockout_weeks: number;
   written_off_units: number | null;
+  /** Outcome loop labels; null on rows measured before the loop existed. */
+  result?: string | null;
+  driver?: string | null;
+}
+
+export interface OutcomeLoopStats {
+  measured: number;
+  rule: { n: number; ok: number; rate: number | null };
+  override: { n: number; ok: number; rate: number | null };
+  /** SKUs where the rule as recommended went wrong at least twice: candidates for rule review. */
+  rule_misses: { sku_id: string; sku_name: string; misses: number; of: number }[];
 }
 
 export interface RunOverrideStat {
@@ -58,7 +69,38 @@ export interface DashboardMetrics {
   estimated_quarter_loss: number | null;
   loss_note: string;
   repeated_overrides: { sku_id: string; sku_name: string; overrides: number; runs: number }[];
+  outcome_loop: OutcomeLoopStats;
   kill: KillCriterion[];
+}
+
+/** Measurement for the outcome loop: rule against override success, and where the rule keeps missing. */
+export function outcomeLoopStats(outcomes: MetricOutcome[], recById: Map<string, MetricRec>): OutcomeLoopStats {
+  // Driver from the decision as it stands now (Raghav may decide after an outcome was first measured).
+  const driverNow = (o: MetricOutcome) => {
+    const status = recById.get(o.recommendation_id)?.status;
+    return status == null ? o.driver : status === "approved" ? "rule" : status === "edited" || status === "rejected" ? "override" : "undecided";
+  };
+  const labelled = outcomes.filter((o) => o.result).map((o) => ({ ...o, driver: driverNow(o) }));
+  const part = (driver: string) => {
+    const xs = labelled.filter((o) => o.driver === driver);
+    const ok = xs.filter((o) => o.result === "ok").length;
+    return { n: xs.length, ok, rate: xs.length ? ok / xs.length : null };
+  };
+  const bySku = new Map<string, { sku_name: string; misses: number; of: number }>();
+  for (const o of labelled) {
+    if (o.driver !== "rule") continue;
+    const rec = recById.get(o.recommendation_id);
+    if (!rec) continue;
+    const e = bySku.get(rec.sku_id) ?? { sku_name: rec.sku_name, misses: 0, of: 0 };
+    e.of++;
+    if (o.result !== "ok") e.misses++;
+    bySku.set(rec.sku_id, e);
+  }
+  const rule_misses = [...bySku]
+    .filter(([, e]) => e.misses >= 2)
+    .map(([sku_id, e]) => ({ sku_id, ...e }))
+    .sort((a, b) => b.misses - a.misses || (a.sku_id < b.sku_id ? -1 : 1));
+  return { measured: labelled.length, rule: part("rule"), override: part("override"), rule_misses };
 }
 
 const DECIDED = new Set(["approved", "edited", "rejected"]);
@@ -154,6 +196,7 @@ export function computeMetrics(input: {
     estimated_quarter_loss: estimatedLoss,
     loss_note: lossNote,
     repeated_overrides: repeatedOverrides(stats, input.recs),
+    outcome_loop: outcomeLoopStats(input.outcomes, recById),
     kill: killCriteria(stats, input.latestAgreement, estimatedLoss, input.goLiveDate, input.today),
   };
 }

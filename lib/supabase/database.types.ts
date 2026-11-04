@@ -164,6 +164,29 @@ export type OutcomeRow = {
   stock_after_4_weeks: number | null;
   stockout_weeks: number;
   written_off_units: number | null;
+  horizon_start_week: string | null;
+  horizon_end_week: string | null;
+  result: string | null;
+  driver: string | null;
+  evidence: Json;
+  updated_at: string;
+  created_at: string;
+};
+export type WriteOffRow = {
+  id: string;
+  sku_id: string;
+  iso_week: string;
+  units: number;
+  created_at: string;
+};
+export type RuleProposalDecisionRow = {
+  id: string;
+  proposal_key: string;
+  decision: string;
+  config_version_before: number;
+  config_version_after: number | null;
+  evidence: Json;
+  decided_by: string | null;
   created_at: string;
 };
 export type BacktestResultRow = {
@@ -206,6 +229,8 @@ export type Database = {
       >;
       ai_calls: Table<AiCallRow, "model" | "ok">;
       outcomes: Table<OutcomeRow, "recommendation_id" | "measured_at">;
+      write_offs: Table<WriteOffRow, "sku_id" | "iso_week" | "units">;
+      rule_proposal_decisions: Table<RuleProposalDecisionRow, "proposal_key" | "decision" | "config_version_before">;
       backtest_results: Table<BacktestResultRow, "config_version" | "weeks_replayed">;
       audit_log: Table<AuditLogRow, "action" | "entity">;
     };

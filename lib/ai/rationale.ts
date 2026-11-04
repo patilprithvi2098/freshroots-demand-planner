@@ -5,6 +5,7 @@ import "server-only";
 import Anthropic from "@anthropic-ai/sdk";
 import { zodOutputFormat } from "@anthropic-ai/sdk/helpers/zod";
 import { z } from "zod";
+import type { PastOutcome } from "@/lib/outcomes";
 import type { Recommendation } from "@/lib/rules/types";
 
 export const AI_MODEL = "claude-sonnet-5-5";
@@ -15,7 +16,7 @@ const OUTPUT_USD_PER_TOKEN = 10 / 1_000_000;
 
 export const SYSTEM_PROMPT = `You are an assistant to Raghav Kulkarni, Senior Demand Planner at Freshroots, a regional FMCG distributor in Maharashtra and Goa. A rules engine has already produced a flag and a recommended quantity for one SKU and marked it as an exception, meaning the rules alone are not enough to decide. Your job is to help Raghav decide quickly.
 
-You will receive JSON with the SKU facts, recent weekly sales, weeks of stock cover, which rules fired, and why this SKU was marked an exception. You may also receive Raghav's last overrides on this SKU.
+You will receive JSON with the SKU facts, recent weekly sales, weeks of stock cover, which rules fired, and why this SKU was marked an exception. You may also receive Raghav's last overrides on this SKU, and what happened in the four weeks after past decisions on it (whether it ran out, was written off, or was left overstocked, and whether the rule or Raghav's change drove it).
 
 Write two things:
 1. "rationale": two or three plain sentences explaining why the rules disagree or why they may not fit this SKU, using only the numbers provided.
@@ -60,6 +61,7 @@ export function buildExceptionContext(
   sku: SkuFacts,
   asOfDate: string,
   overrides: OverrideContext[],
+  pastOutcomes: PastOutcome[] = [],
 ) {
   const r1 = (n: number | null) => (n == null ? null : Math.round(n * 10) / 10);
   return {
@@ -89,6 +91,16 @@ export function buildExceptionContext(
     exception_reasons: rec.exception_reasons,
     missing_weeks: rec.missing_weeks,
     planner_last_overrides: overrides.slice(0, 3),
+    // Outcome loop, Retrieve: results only (numbers and labels), never notes or identities.
+    past_outcomes: pastOutcomes.slice(0, 3).map((o) => ({
+      as_of_date: o.as_of_date,
+      result: o.result,
+      decided_by: o.driver === "override" ? "planner_change" : o.driver === "rule" ? "rule_as_recommended" : "undecided",
+      recommended_qty: o.recommended_qty,
+      final_qty: o.final_qty,
+      stockout_weeks: o.stockout_weeks,
+      written_off_units: o.written_off_units,
+    })),
   };
 }
 

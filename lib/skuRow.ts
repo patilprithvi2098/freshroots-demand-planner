@@ -1,4 +1,5 @@
 // The shape every screen uses for one SKU recommendation (review list, overview, pop-up).
+import type { PastOutcome } from "@/lib/outcomes";
 import type { RecommendationRow } from "@/lib/supabase/database.types";
 import type { SkuHistory } from "@/lib/skuHistory";
 
@@ -41,6 +42,8 @@ export interface SkuRow {
   misfit: boolean;
   /** Raghav's own recent decisions on this SKU (earlier runs only). */
   history?: SkuHistory | null;
+  /** Outcome loop: what happened after this SKU's last few decisions, newest first. */
+  past_outcomes: PastOutcome[];
 }
 
 const num = (v: number | null) => (v == null ? null : Number(v));
@@ -93,6 +96,7 @@ export function toSkuRow(
     window,
     gap_units: gap,
     misfit,
+    past_outcomes: [],
   };
 }
 

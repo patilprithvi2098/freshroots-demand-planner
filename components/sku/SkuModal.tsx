@@ -8,6 +8,7 @@ import { SalesBars } from "@/components/charts/SalesBars";
 import { btn } from "@/components/ui";
 import { EXCEPTION_LABEL, fmt1, fmtInt, fmtRupees } from "@/lib/format";
 import { ruleExplanation } from "@/lib/exceptionText";
+import { RESULT_LABEL } from "@/lib/outcomes";
 import type { SkuRow } from "@/lib/skuRow";
 import { DecisionBadge, JudgementBadge, SituationBadge, TrendValue } from "./labels";
 import { SkuImage } from "./SkuImage";
@@ -208,6 +209,43 @@ export function SkuModal({
               Weekly sales, last 16 weeks
             </h3>
             <SalesBars data={row.recent_sales} avg={row.avg12} />
+          </section>
+
+          <section aria-labelledby="past-h">
+            <h3 id="past-h" className="mb-2 text-sm font-semibold">
+              What happened after past decisions
+            </h3>
+            {row.past_outcomes.length === 0 ? (
+              <p className="text-sm text-neutral-700">
+                Nothing measured yet. Each decision is checked once four more weeks of SAP sales are uploaded.
+              </p>
+            ) : (
+              <ul className="space-y-2">
+                {row.past_outcomes.map((o) => (
+                  <li key={o.as_of_date} className="flex items-start gap-3 rounded-xl border border-neutral-200 px-3 py-2 text-sm">
+                    <span
+                      className={`mt-0.5 shrink-0 rounded-full px-2 py-0.5 text-xs font-medium ring-1 ring-inset ${
+                        o.result === "ok" ? "bg-emerald-50 text-emerald-800 ring-emerald-200" : "bg-red-50 text-red-800 ring-red-200"
+                      }`}
+                    >
+                      {RESULT_LABEL[o.result] ?? o.result}
+                    </span>
+                    <span className="min-w-0">
+                      <span className="block">
+                        Stock as of {o.as_of_date}:{" "}
+                        {o.driver === "override"
+                          ? `you changed ${o.recommended_qty == null ? "the suggestion" : fmtInt(o.recommended_qty)} to ${o.final_qty == null ? "no order" : fmtInt(o.final_qty)}`
+                          : o.driver === "rule"
+                            ? `the suggestion${o.recommended_qty == null ? "" : ` of ${fmtInt(o.recommended_qty)}`} was approved`
+                            : "no decision was made"}
+                        .
+                      </span>
+                      {o.summary ? <span className="block text-xs text-neutral-600">{o.summary}</span> : null}
+                    </span>
+                  </li>
+                ))}
+              </ul>
+            )}
           </section>
 
           <details className="group rounded-xl border border-neutral-200 px-4 py-3">

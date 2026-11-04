@@ -149,10 +149,23 @@ export async function confirmUpload(db: Db, actor: string, fileType: FileType, f
       saved = keep.length;
       break;
     }
+    case "write_offs": {
+      const known = await knownSkus();
+      const rows = parseCsv("write_offs", text).rows;
+      const keep = rows.filter((r) => known.has(r.sku_id));
+      skipped.push(...new Set(rows.filter((r) => !known.has(r.sku_id)).map((r) => r.sku_id)));
+      await insertChunked((c) => db.from("write_offs").upsert(c, { onConflict: "sku_id,iso_week" }), keep);
+      saved = keep.length;
+      break;
+    }
     case "historical_decisions": {
       const rows = parseCsv("historical_decisions", text).rows;
       await insertChunked((c) => db.from("historical_decisions").upsert(c, { onConflict: "sku_id,iso_week" }), rows);
       break;
+    }
+    default: {
+      const never: never = fileType;
+      throw new Error(`Unknown file type ${String(never)}`);
     }
   }
 

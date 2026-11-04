@@ -61,6 +61,23 @@ rating that a person reads.
 Upload warnings (gaps, duplicates, unknown SKUs) are already shown and stored. They need a person to fix the
 SAP export, not a learning loop.
 
+## What is built (2026-11-04)
+
+| Loop | Stage | Where |
+|---|---|---|
+| 1 | Signal: write-offs | `write_offs.csv` upload (Data page → Optional), table `write_offs` |
+| 1 | Capture: outcome per decision | `lib/outcomes.ts` (pure, tested) |
+| 1 | Store | `outcomes` gets `result`, `driver`, `evidence`, horizon weeks (migration `0004_feedback_loops.sql`) |
+| 1 | When it runs | After every sales, stock or write-off upload, in the daily cron (`/api/cron/keepalive`), and in `npm run demo-reset` (`lib/services/outcomeJob.ts`) |
+| 1 | Retrieve | SKU pop-up "What happened after past decisions"; Claude receives `past_outcomes` (labels and numbers only) |
+| 1 | Apply / Measurement | Performance page "Did the decisions work?": rule against override success, SKUs where the rule keeps missing; loss estimate uses the measured stock-outs and write-offs |
+| 2 | Retrieve → Apply | `lib/ruleReview.ts` (pure, tested): 3+ consistent changes in the last 5 runs made with the current rules → a proposal, suppressed when outcomes show the rule did better |
+| 2 | Gate | Rules page "Rule review": Accept saves a new rule version and backtests it; Dismiss records it. Decisions are stored in `rule_proposal_decisions`. Corrections made under an older rule version never propose a second change |
+| Both | Proof | `tests/e2e/loops.spec.ts`: three runs with the same correction → proposal → accepted → version 2; four weeks of follow-up data → outcomes measured, shown on the Performance page and in the pop-up |
+
+Driver ("rule" or "override") is always read from the decision as it stands now, so a line decided after its
+outcome was first measured is attributed correctly.
+
 ## Build order
 
 1. **Loop 1, outcome computation**: a pure function from later sales, stock and write-offs to an outcome

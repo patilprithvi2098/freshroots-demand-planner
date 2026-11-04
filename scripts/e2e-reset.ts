@@ -17,6 +17,11 @@ async function main() {
     db.from("upload_batches").delete().neq("id", none),
     db.from("backtest_results").delete().neq("id", none),
     db.from("historical_decisions").delete().neq("id", none),
+    db.from("write_offs").delete().neq("id", none),
+    db.from("rule_proposal_decisions").delete().neq("id", none),
+    // Snapshots added by the loop test after the sample date (the sample stock is 2026-10-19).
+    db.from("inventory_snapshots").delete().gt("as_of_date", "2026-10-19"),
+    db.from("weekly_sales").delete().gt("iso_week", "2026-W42"),
     db.from("audit_log").delete().neq("id", none),
   ];
   for (const s of steps) {

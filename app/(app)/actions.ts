@@ -5,12 +5,12 @@ import { revalidatePath } from "next/cache";
 import { assertRole } from "@/lib/auth";
 import { FILE_TYPES, type FileType } from "@/lib/csv/loaders";
 import { ruleParamsSchema } from "@/lib/rules/config";
-import { runBacktest, type HistoricalDecision } from "@/lib/rules/backtest";
 import type { Json } from "@/lib/supabase/database.types";
 import { createClient } from "@/lib/supabase/server";
-import { audit, fetchAll } from "@/lib/services/db";
 import { enrichRun } from "@/lib/services/enrich";
-import { getActiveConfig, loadEngineInput } from "@/lib/services/engineInput";
+import { measureOutcomes } from "@/lib/services/outcomeJob";
+import { runAndStoreBacktest } from "@/lib/services/backtest";
+import { acceptProposal, dismissProposal } from "@/lib/services/ruleReview";
 import * as review from "@/lib/services/review";
 import { RunBlockedError, startRun } from "@/lib/services/runs";
 import { checkFile, confirmUpload, previewUpload, type UploadPreview } from "@/lib/services/uploads";
@@ -59,7 +59,18 @@ export async function confirmUploadAction(form: FormData): Promise<ActionResult<
   try {
     const session = await assertRole(["planner"]);
     const { fileType, file, text } = await readCsv(form);
-    const res = await confirmUpload(await createClient(), session.userId, fileType, file.name, text);
+    const db = await createClient();
+    const res = await confirmUpload(db, session.userId, fileType, file.name, text);
+    // Outcome loop: new sales, stock or write-offs may complete the four weeks after earlier decisions.
+    if (fileType === "weekly_sales" || fileType === "current_inventory" || fileType === "write_offs") {
+      after(async () => {
+        try {
+          await measureOutcomes(db);
+        } catch (e) {
+          console.error("measureOutcomes failed", e);
+        }
+      });
+    }
     revalidatePath("/data");
     revalidatePath("/overview");
     return { ok: true, data: res, message: `Saved ${res.saved} rows.` };
@@ -179,36 +190,35 @@ export async function releaseAction(runId: string): Promise<ActionResult<{ relea
 export async function runBacktestAction(): Promise<ActionResult<{ id: string }>> {
   try {
     const s = await assertRole(["planner"]);
-    const db = await createClient();
-    const config = await getActiveConfig(db);
-    const { data: latestInv } = await db
-      .from("inventory_snapshots")
-      .select("as_of_date")
-      .order("as_of_date", { ascending: false })
-      .limit(1)
-      .maybeSingle();
-    const { data: latestSale } = await db.from("weekly_sales").select("iso_week").order("iso_week", { ascending: false }).limit(1).maybeSingle();
-    if (!latestSale) throw new Error("Upload weekly sales first.");
-    const asOf = latestInv?.as_of_date ?? new Date().toISOString().slice(0, 10);
-    const input = await loadEngineInput(db, asOf, config.params, { allSales: true });
-    const decisions = await fetchAll((a, b) => db.from("historical_decisions").select("sku_id, iso_week, action").order("id").range(a, b));
-    const { asOfDate: _unused, ...base } = input;
-    const res = runBacktest(base, decisions as HistoricalDecision[]);
-    const { data, error } = await db
-      .from("backtest_results")
-      .insert({
-        config_version: config.version,
-        weeks_replayed: res.weeks.length,
-        agreement_pct: res.agreement.pct,
-        detail: res as unknown as Json,
-      })
-      .select("id")
-      .single();
-    if (error) throw new Error(error.message);
-    await audit(db, s.userId, "backtest", "backtest_results", data.id, { weeks: res.weeks.length, agreement: res.agreement });
+    const res = await runAndStoreBacktest(await createClient(), s.userId);
     revalidatePath("/backtest");
     revalidatePath("/dashboard");
-    return { ok: true, data: { id: data.id } };
+    return { ok: true, data: { id: res.id } };
+  } catch (e) {
+    return fail(e);
+  }
+}
+
+// ---------- rule review (loop 2) ----------
+
+export async function acceptProposalAction(key: string): Promise<ActionResult> {
+  try {
+    const s = await assertRole(["planner"]);
+    const res = await acceptProposal(await createClient(), s.userId, String(key));
+    revalidatePath("/settings");
+    revalidatePath("/backtest");
+    return { ok: true, data: undefined, message: res.message };
+  } catch (e) {
+    return fail(e);
+  }
+}
+
+export async function dismissProposalAction(key: string): Promise<ActionResult> {
+  try {
+    const s = await assertRole(["planner"]);
+    await dismissProposal(await createClient(), s.userId, String(key));
+    revalidatePath("/settings");
+    return { ok: true, data: undefined, message: "Dismissed. It won't be suggested again for this rule version." };
   } catch (e) {
     return fail(e);
   }

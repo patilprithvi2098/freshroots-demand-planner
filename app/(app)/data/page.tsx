@@ -25,8 +25,8 @@ const GROUPS: { key: string; title: string; hint: string; types: FileType[]; com
   {
     key: "optional",
     title: "Optional",
-    hint: "Open POs from Zoho add stock on order to cover. Past decisions let the backtest measure agreement.",
-    types: ["open_purchase_orders", "historical_decisions"],
+    hint: "Open POs from Zoho add stock on order to cover. Write-offs from SAP let the outcome check count waste. Past decisions let the backtest measure agreement.",
+    types: ["open_purchase_orders", "write_offs", "historical_decisions"],
     compact: true,
   },
 ];

@@ -21,7 +21,7 @@ export async function loadDashboard(db: Db): Promise<Dashboard> {
       .range(a, b),
   );
   const outcomes = await fetchAll((a, b) =>
-    db.from("outcomes").select("recommendation_id, measured_at, stockout_weeks, written_off_units").order("id").range(a, b),
+    db.from("outcomes").select("recommendation_id, measured_at, stockout_weeks, written_off_units, result, driver").order("id").range(a, b),
   );
   const skus = await fetchAll((a, b) => db.from("skus").select("sku_id, unit_price").order("sku_id").range(a, b));
   const { data: bt } = await db

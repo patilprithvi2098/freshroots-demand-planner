@@ -15,7 +15,8 @@ export type FileType =
   | "distributor_master"
   | "calendar"
   | "open_purchase_orders"
-  | "historical_decisions";
+  | "historical_decisions"
+  | "write_offs";
 
 export const FILE_TYPES: { type: FileType; label: string; required: boolean }[] = [
   { type: "sku_master", label: "SKU master", required: true },
@@ -25,6 +26,7 @@ export const FILE_TYPES: { type: FileType; label: string; required: boolean }[] 
   { type: "calendar", label: "Festival calendar", required: true },
   { type: "open_purchase_orders", label: "Open purchase orders (optional)", required: false },
   { type: "historical_decisions", label: "Historical decisions (optional, for backtest)", required: false },
+  { type: "write_offs", label: "Write-offs (optional, for outcomes)", required: false },
 ];
 
 export interface RowIssue {
@@ -225,6 +227,15 @@ export const openPoRow = z
     status: r.Status.toLowerCase(),
   }));
 
+/** Units scrapped per SKU and week (SAP write-off movements). Feeds the outcome loop. */
+export const writeOffRow = z
+  .object({
+    SKU_ID: requiredText,
+    Week: isoWeek,
+    Units_Written_Off: nonNegInt("Units_Written_Off"),
+  })
+  .transform((r) => ({ sku_id: r.SKU_ID, iso_week: r.Week, units: r.Units_Written_Off }));
+
 /** Raghav's past decisions, for backtest agreement. Action: reorder, pause or no_action. */
 export const historicalDecisionRow = z
   .object({
@@ -255,6 +266,7 @@ export type DistributorRow = z.output<typeof distributorRow>;
 export type CalendarRow = z.output<typeof calendarRow>;
 export type OpenPoRow = z.output<typeof openPoRow>;
 export type HistoricalDecisionRow = z.output<typeof historicalDecisionRow>;
+export type WriteOffCsvRow = z.output<typeof writeOffRow>;
 
 interface Spec<T> {
   schema: z.ZodType<T>;
@@ -307,6 +319,13 @@ const SPECS: { [K in FileType]: Spec<RowFor<K>> } = {
     key: (r) => r.po_id,
     keyLabel: "PO_ID",
   },
+  write_offs: {
+    schema: writeOffRow,
+    required: ["SKU_ID", "Week", "Units_Written_Off"],
+    optional: [],
+    key: (r) => `${r.sku_id}|${r.iso_week}`,
+    keyLabel: "SKU_ID + Week",
+  },
   historical_decisions: {
     schema: historicalDecisionRow,
     required: ["SKU_ID", "Week", "Action"],
@@ -328,7 +347,9 @@ export type RowFor<K extends FileType> = K extends "sku_master"
           ? CalendarRow
           : K extends "open_purchase_orders"
             ? OpenPoRow
-            : HistoricalDecisionRow;
+            : K extends "historical_decisions"
+              ? HistoricalDecisionRow
+              : WriteOffCsvRow;
 
 export function parseCsv<K extends FileType>(fileType: K, text: string): LoadResult<RowFor<K>> {
   const spec = SPECS[fileType] as unknown as Spec<RowFor<K>>;

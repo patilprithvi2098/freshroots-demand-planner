@@ -10,6 +10,7 @@ import { parseCsv } from "../lib/csv/loaders";
 import { runBacktest } from "../lib/rules/backtest";
 import type { Json } from "../lib/supabase/database.types";
 import { enrichRun } from "../lib/services/enrich";
+import { measureOutcomes } from "../lib/services/outcomeJob";
 import { getActiveConfig, loadEngineInput } from "../lib/services/engineInput";
 import { startRun } from "../lib/services/runs";
 import { adminClient } from "./_admin";
@@ -22,9 +23,14 @@ async function main() {
     process.exit(1);
   }
   const db = adminClient();
-  for (const table of ["runs", "upload_batches", "backtest_results", "historical_decisions"] as const) {
+  for (const table of ["runs", "upload_batches", "backtest_results", "historical_decisions", "write_offs", "rule_proposal_decisions"] as const) {
     const { error } = await db.from(table).delete().neq("id", NONE);
     if (error) throw new Error(`${table}: ${error.message}`);
+  }
+  // Anything dated after the sample (2026-10-19 stock, sales to 2026-W42), e.g. from the loop browser test.
+  for (const q of [db.from("inventory_snapshots").delete().gt("as_of_date", "2026-10-19"), db.from("weekly_sales").delete().gt("iso_week", "2026-W42")]) {
+    const { error } = await q;
+    if (error) throw new Error(error.message);
   }
   await db.from("rule_config").update({ active: false }).gt("version", 1);
   await db.from("rule_config").delete().gt("version", 1);
@@ -91,6 +97,9 @@ async function main() {
   });
   if (btErr) throw new Error(`backtest_results: ${btErr.message}`);
   console.log(`Backtest: ${bt.weeks.length} weeks replayed.`);
+
+  const measured = await measureOutcomes(db);
+  console.log(`Outcomes: ${measured.measured} measured, ${measured.waiting} waiting for four weeks of later sales.`);
 
   const ai = await enrichRun(db, run.runId);
   console.log(`Explanations: ${ai.called - ai.failed} written by Claude, ${ai.failed} failed, ${ai.skipped} skipped (rule-based explanation shown).`);

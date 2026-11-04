@@ -12,6 +12,7 @@ import { env } from "@/lib/env";
 import { resolveParams } from "@/lib/rules/config";
 import type { RuleParams } from "@/lib/rules/types";
 import { startOfMonthIstUtc, type Db } from "./db";
+import { outcomeHistory } from "./outcomeJob";
 
 export async function monthlyAiSpendUsd(db: Db, now = new Date()): Promise<number> {
   const { data, error } = await db.from("ai_calls").select("cost_usd").gte("created_at", startOfMonthIstUtc(now));
@@ -84,6 +85,9 @@ export async function enrichRun(db: Db, runId: string, client?: MessagesClient):
   const { data: skus } = await db.from("skus").select("*").in("sku_id", skuIds);
   const skuById = new Map((skus ?? []).map((s) => [s.sku_id, s]));
 
+  // Outcome loop, Retrieve: what happened after past decisions on these SKUs.
+  const pastOutcomes = await outcomeHistory(db, skuIds).catch(() => new Map());
+
   for (let i = 0; i < pending.length; i++) {
     const row = pending[i];
     if (called >= params.max_ai_calls_per_run || spent >= cap) {
@@ -135,6 +139,7 @@ export async function enrichRun(db: Db, runId: string, client?: MessagesClient):
       },
       run.as_of_date,
       overrides,
+      pastOutcomes.get(row.sku_id) ?? [],
     );
     const result = await generateRationale(ai, context);
     called++;

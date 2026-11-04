@@ -5,7 +5,9 @@ import type { RuleParams } from "@/lib/rules/types";
 import { createClient } from "@/lib/supabase/server";
 import { fmtDateTime } from "@/lib/format";
 import { Card, PageHeader } from "@/components/ui";
+import { loadProposals } from "@/lib/services/ruleReview";
 import { ConfigForm } from "./ConfigForm";
+import { RuleReview } from "./RuleReview";
 import { CopyRules } from "./CopyRules";
 
 export default async function SettingsPage() {
@@ -15,6 +17,7 @@ export default async function SettingsPage() {
   const active = versions?.find((v) => v.active);
   const params = resolveParams((active?.params ?? null) as Partial<RuleParams> | null);
   const plain = rulesInPlainLanguage(params, active?.version ?? 1);
+  const review = await loadProposals(db).catch(() => ({ proposals: [], configVersion: active?.version ?? 1, runsLooked: 0 }));
 
   return (
     <>
@@ -22,6 +25,7 @@ export default async function SettingsPage() {
         title="Rules"
         description="Every save creates a new version. Old versions are never edited, and each run records the version it used."
       />
+      <RuleReview proposals={review.proposals} />
       <div className="grid gap-6 lg:grid-cols-[1fr_1fr]">
         <Card>
           <h2 className="mb-1 font-semibold">Parameters (version {active?.version})</h2>
