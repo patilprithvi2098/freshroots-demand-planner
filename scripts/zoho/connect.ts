@@ -1,8 +1,8 @@
 // One-time: exchange a Zoho Self Client grant code for a refresh token and save it to .env.local.
 // Secrets are read from and written to .env.local only; nothing secret is printed.
 //
-// 1. In https://api-console.zoho.in → Self Client → Generate Code, scope:
-//      ZohoInventory.purchaseorders.CREATE,ZohoInventory.purchaseorders.READ,ZohoInventory.items.ALL,ZohoInventory.contacts.ALL,ZohoInventory.settings.READ
+// 1. In https://api-console.zoho.in → Self Client → Generate Code, scope (purchaseorders.ALL so orders can be issued):
+//      ZohoInventory.purchaseorders.ALL,ZohoInventory.items.ALL,ZohoInventory.contacts.ALL,ZohoInventory.settings.READ
 // 2. Put these three lines in .env.local (the code expires in minutes, so run step 3 straight away):
 //      ZOHO_CLIENT_ID=...
 //      ZOHO_CLIENT_SECRET=...
