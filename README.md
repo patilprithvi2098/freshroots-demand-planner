@@ -64,6 +64,27 @@ with an SAP export folder or SFTP drop (needs the IT team to schedule the export
 for open POs and lead times (needs an OAuth client ID, secret, refresh token and organisation ID from
 Freshroots' Zoho admin).
 
+### Ordering in Zoho Inventory (extension beyond the brief)
+
+The brief's Phase 3 only *reads* Zoho. This build also lets procurement place the orders:
+
+1. Raghav approves and sends lines to procurement (unchanged).
+2. Procurement opens **Orders → Create and issue in Zoho**. A preview shows one purchase order per
+   distributor (the SKU master's `Distributor_ID`), in units, due today + `Lead_Time_Days` (7 if unknown).
+   Quantities above `max_qty_multiple` × the standard quantity are highlighted and need a tick to send.
+3. Each order is created and **issued straight away** in Zoho (`POST /purchaseorders`, then
+   `POST /purchaseorders/{id}/status/issued`). Lines are claimed first, and every order carries a stable
+   reference number, so a double click, a second tab or a retry never orders twice. An order left as a
+   draft (issue call failed) is issued on the next try.
+4. **Refresh Zoho status** (and the daily cron) brings back status and delivery dates from Zoho's purchase
+   receives. Received orders stop counting as stock on order, and the dated history feeds the backtest and
+   the outcome loop.
+
+Only the procurement role can place orders, as in the brief; Raghav sees their status. Browser tests run
+against a local Zoho mock (`scripts/zoho/mock-server.ts`) that Playwright starts itself; they never reach a
+real Zoho organisation. Live ordering needs `ZOHO_CLIENT_ID`, `ZOHO_CLIENT_SECRET`, `ZOHO_REFRESH_TOKEN`,
+`ZOHO_ORG_ID` and `ZOHO_DC` in Vercel (server only).
+
 ## Stack
 
 - Next.js 15 (App Router), TypeScript strict, Tailwind CSS 4

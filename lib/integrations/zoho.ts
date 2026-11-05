@@ -1,5 +1,5 @@
 // Zoho Inventory REST client (India data centre by default). Server only: holds OAuth secrets.
-// Creates purchase orders as drafts; procurement issues them inside Zoho Inventory.
+// Procurement creates purchase orders and issues them straight away (create, then mark as issued).
 //
 // Env (server only, never NEXT_PUBLIC_):
 //   ZOHO_CLIENT_ID, ZOHO_CLIENT_SECRET, ZOHO_REFRESH_TOKEN, ZOHO_ORG_ID
@@ -46,10 +46,14 @@ export interface ZohoPurchaseOrder {
   purchaseorder_id: string;
   purchaseorder_number: string;
   reference_number?: string;
+  /** draft | issued | partially_received | received | billed | closed | cancelled (case varies). */
   status: string;
+  received_status?: string;
   vendor_id?: string;
   date?: string;
   delivery_date?: string;
+  /** Deliveries recorded against the PO (Zoho "purchase receives"), each with its date. */
+  purchasereceives?: { receive_id: string; receive_number?: string; date: string }[];
 }
 
 export interface ZohoItem {
@@ -149,6 +153,11 @@ export function createZohoClient(cfg: ZohoConfig, fetchImpl: Fetch = fetch) {
       return body.purchaseorder;
     },
 
+    /** Mark a PO as issued (POST /purchaseorders/{id}/status/issued). */
+    async issuePurchaseOrder(id: string): Promise<void> {
+      await call<{ message?: string }>("POST", `/purchaseorders/${encodeURIComponent(id)}/status/issued`);
+    },
+
     async findPurchaseOrderByReference(reference: string): Promise<ZohoPurchaseOrder | null> {
       const body = await call<{ purchaseorders: ZohoPurchaseOrder[] }>("GET", "/purchaseorders", { reference_number: reference });
       return body.purchaseorders.find((p) => p.reference_number === reference) ?? null;
@@ -178,9 +187,19 @@ export function createZohoClient(cfg: ZohoConfig, fetchImpl: Fetch = fetch) {
 
 export type ZohoClient = ReturnType<typeof createZohoClient>;
 
-/** Create a draft PO unless one with the same reference already exists (a retry after a lost response). */
+/** Create a PO unless one with the same reference already exists (a retry after a lost response). */
 export async function createPurchaseOrderOnce(client: ZohoClient, po: PoDraft) {
   const existing = await client.findPurchaseOrderByReference(po.reference_number);
   if (existing) return { po: existing, created: false };
   return { po: await client.createPurchaseOrder(po), created: true };
+}
+
+/** Create (or find) the PO, then issue it if it is still a draft. Safe to retry at any point. */
+export async function createAndIssuePurchaseOrder(client: ZohoClient, draft: PoDraft) {
+  const { po, created } = await createPurchaseOrderOnce(client, draft);
+  if (po.status.toLowerCase() === "draft") {
+    await client.issuePurchaseOrder(po.purchaseorder_id);
+    return { po: { ...po, status: "issued" }, created, issued: true };
+  }
+  return { po, created, issued: false };
 }

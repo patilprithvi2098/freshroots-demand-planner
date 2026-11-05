@@ -23,10 +23,10 @@ export default defineConfig({
     { name: "setup", testMatch: /auth\.setup\.ts/, use: chrome, teardown: "teardown" },
     { name: "teardown", testMatch: /auth\.teardown\.ts/ },
     // Writes to the database. Runs only when E2E_ALLOW_WRITES=1 and the Supabase project matches E2E_SUPABASE_REF.
-    { name: "workflow", testMatch: [/loops\.spec\.ts/, /workflow\.spec\.ts/], use: chrome, dependencies: ["setup"] },
+    { name: "workflow", testMatch: [/loops\.spec\.ts/, /ordering\.spec\.ts/, /workflow\.spec\.ts/], use: chrome, dependencies: ["setup"] },
     {
       name: "chrome",
-      testIgnore: [/workflow\.spec\.ts/, /loops\.spec\.ts/, /auth\.(setup|teardown)\.ts/],
+      testIgnore: [/workflow\.spec\.ts/, /loops\.spec\.ts/, /ordering\.spec\.ts/, /auth\.(setup|teardown)\.ts/],
       use: chrome,
       dependencies: ["setup", "workflow"],
     },
@@ -37,10 +37,29 @@ export default defineConfig({
       dependencies: ["setup", "workflow"],
     },
   ],
-  webServer: {
-    command: `npm run dev -- --port ${PORT}`,
-    url: `http://localhost:${PORT}/login`,
-    reuseExistingServer: true,
-    timeout: 180_000,
-  },
+  // The app always starts fresh, pointed at the local Zoho mock: a server already running with real
+  // Zoho settings is never reused, so no test can create an order in a real Zoho organisation.
+  webServer: [
+    {
+      command: "npx tsx scripts/zoho/mock-server.ts",
+      url: "http://localhost:4010/__test/state",
+      env: { PORT: "4010", MOCK_ZOHO_LENIENT: "1" },
+      reuseExistingServer: false,
+      timeout: 60_000,
+    },
+    {
+      command: `npm run dev -- --port ${PORT}`,
+      url: `http://localhost:${PORT}/login`,
+      env: {
+        ZOHO_API_BASE: "http://localhost:4010",
+        ZOHO_ACCOUNTS_BASE: "http://localhost:4010",
+        ZOHO_CLIENT_ID: "mock",
+        ZOHO_CLIENT_SECRET: "mock",
+        ZOHO_REFRESH_TOKEN: "mock",
+        ZOHO_ORG_ID: "60000000001",
+      },
+      reuseExistingServer: false,
+      timeout: 180_000,
+    },
+  ],
 });

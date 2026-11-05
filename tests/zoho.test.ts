@@ -1,7 +1,7 @@
 import { beforeEach, describe, expect, it } from "vitest";
-import { createPurchaseOrderOnce, createZohoClient, zohoConfigFromEnv, ZohoError, type ZohoClient } from "@/lib/integrations/zoho";
+import { createAndIssuePurchaseOrder, createPurchaseOrderOnce, createZohoClient, zohoConfigFromEnv, ZohoError, type ZohoClient } from "@/lib/integrations/zoho";
 import { planPurchaseOrders, poReference, type ReleasedLine } from "@/lib/integrations/zohoPo";
-import { MOCK_ORG_ID, mockFetch, newMockState, type MockState } from "@/scripts/zoho/mock";
+import { MOCK_ORG_ID, mockFetch, mockReceive, newMockState, type MockState } from "@/scripts/zoho/mock";
 
 const line = (over: Partial<ReleasedLine>): ReleasedLine => ({
   recommendation_id: "r1",
@@ -116,6 +116,34 @@ describe("Zoho Inventory client (against the mock)", () => {
     await expect(client.createPurchaseOrder(draft())).rejects.toBeInstanceOf(ZohoError);
     await expect(client.createPurchaseOrder({ ...draft(), vendor_id: "nope" })).rejects.toThrow(/Invalid vendor/);
     expect(state.purchaseorders).toHaveLength(0);
+  });
+
+  it("creates and issues straight away", async () => {
+    const { po, created, issued } = await createAndIssuePurchaseOrder(client, draft());
+    expect([created, issued, po.status]).toEqual([true, true, "issued"]);
+    expect(state.purchaseorders[0].status).toBe("issued");
+  });
+
+  it("a retry after the issue call failed finds the draft and issues it, without a second PO", async () => {
+    await createPurchaseOrderOnce(client, draft()); // created, but the issue step never ran
+    const again = await createAndIssuePurchaseOrder(client, draft());
+    expect([again.created, again.issued]).toEqual([false, true]);
+    expect(state.purchaseorders).toHaveLength(1);
+    expect(state.purchaseorders[0].status).toBe("issued");
+  });
+
+  it("does not try to issue a PO that is already issued (e.g. by hand in Zoho)", async () => {
+    await createAndIssuePurchaseOrder(client, draft());
+    const again = await createAndIssuePurchaseOrder(client, draft());
+    expect([again.created, again.issued]).toEqual([false, false]);
+  });
+
+  it("reports deliveries with their dates", async () => {
+    const { po } = await createAndIssuePurchaseOrder(client, draft());
+    mockReceive(state, po.purchaseorder_id, "2026-10-28");
+    const fetched = await client.getPurchaseOrder(po.purchaseorder_id);
+    expect(fetched.status).toBe("received");
+    expect(fetched.purchasereceives?.[0].date).toBe("2026-10-28");
   });
 
   it("pages through items and vendors", async () => {

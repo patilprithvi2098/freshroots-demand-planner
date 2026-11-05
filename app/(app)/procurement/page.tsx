@@ -1,15 +1,18 @@
 import { requireRole } from "@/lib/auth";
+import { createAdminClient } from "@/lib/supabase/admin";
 import { createClient } from "@/lib/supabase/server";
 import { releasedItems } from "@/lib/services/procurement";
-import { fmtDateTime, fmtInt } from "@/lib/format";
+import { fmtDate, fmtDateTime, fmtInt } from "@/lib/format";
+import type { OrderStatus } from "@/lib/services/procurement";
 import { btn, EmptyState, PageHeader } from "@/components/ui";
 import { SkuImage } from "@/components/sku/SkuImage";
 import { zohoConfigFromEnv } from "@/lib/integrations/zoho";
 import { ZohoOrderButtons } from "./ZohoOrderButtons";
 
 export default async function ProcurementPage() {
-  await requireRole(["planner", "procurement"]);
-  const items = await releasedItems(await createClient());
+  const session = await requireRole(["planner", "procurement"]);
+  // Delivery status lives in open_purchase_orders, which procurement can't read under RLS: read it server-side.
+  const items = await releasedItems(await createClient(), 60, createAdminClient());
   const batches = new Map<string, typeof items>();
   for (const i of items) {
     const key = i.released_at;
@@ -21,11 +24,15 @@ export default async function ProcurementPage() {
     <>
       <PageHeader
         title="Orders for procurement"
-        description="Recommendations the demand planner has approved and released. Create them as draft purchase orders in Zoho Inventory, then issue them there. Quantities are final."
+        description={
+          session.role === "procurement"
+            ? "Orders the demand planner has approved and released. Check the preview, then create and issue them in Zoho Inventory in one step. Quantities are final."
+            : "Orders you released. Procurement creates and issues them in Zoho Inventory; their status and deliveries show here."
+        }
         actions={
           items.length ? (
             <div className="flex flex-col items-end gap-2">
-              <ZohoOrderButtons pendingLines={notOrdered} configured={zohoConfigFromEnv() != null} />
+              <ZohoOrderButtons pendingLines={notOrdered} configured={zohoConfigFromEnv() != null} canOrder={session.role === "procurement"} />
               <a className={btn.secondary} href="/api/procurement/export" download>
                 Export CSV
               </a>
@@ -50,7 +57,7 @@ export default async function ProcurementPage() {
                     <th scope="col" className="px-4 py-2">Distributor</th>
                     <th scope="col" className="px-4 py-2">Action</th>
                     <th scope="col" className="px-4 py-2 text-right">Final quantity</th>
-                    <th scope="col" className="px-4 py-2">Zoho PO</th>
+                    <th scope="col" className="px-4 py-2">Zoho order</th>
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-neutral-100">
@@ -67,15 +74,7 @@ export default async function ProcurementPage() {
                       <td className="px-4 py-2">{i.action}</td>
                       <td className="tabular px-4 py-2 text-right font-medium">{fmtInt(i.final_qty)}</td>
                       <td className="px-4 py-2">
-                        {i.zoho_po_number ? (
-                          <span className="font-mono text-xs">{i.zoho_po_number}</span>
-                        ) : i.zoho_error ? (
-                          <span className="text-red-700">Failed: {i.zoho_error}</span>
-                        ) : i.final_qty > 0 ? (
-                          <span className="text-neutral-600">Not yet ordered</span>
-                        ) : (
-                          <span className="text-neutral-600">No order (pause)</span>
-                        )}
+                        <OrderCell item={i} />
                       </td>
                     </tr>
                   ))}
@@ -86,5 +85,29 @@ export default async function ProcurementPage() {
         </div>
       )}
     </>
+  );
+}
+
+const STATUS: Record<OrderStatus, { label: string; tone: string }> = {
+  not_ordered: { label: "Not yet ordered", tone: "text-neutral-600" },
+  draft: { label: "Created, not issued", tone: "text-amber-800" },
+  issued: { label: "Issued", tone: "text-emerald-800" },
+  partially_received: { label: "Partly received", tone: "text-sky-800" },
+  received: { label: "Received", tone: "text-emerald-900" },
+  cancelled: { label: "Cancelled in Zoho", tone: "text-red-700" },
+};
+
+function OrderCell({ item: i }: { item: { final_qty: number; zoho_po_number: string | null; zoho_error: string | null; order_status: OrderStatus; received_date: string | null } }) {
+  if (i.final_qty === 0) return <span className="text-neutral-600">No order (pause)</span>;
+  const s = STATUS[i.order_status];
+  return (
+    <span className="flex flex-col">
+      {i.zoho_po_number ? <span className="font-mono text-xs">{i.zoho_po_number}</span> : null}
+      <span className={`text-sm font-medium ${s.tone}`}>
+        {s.label}
+        {i.order_status === "received" && i.received_date ? ` ${fmtDate(i.received_date)}` : ""}
+      </span>
+      {i.zoho_error ? <span className="text-xs text-red-700">{i.zoho_error}</span> : null}
+    </span>
   );
 }

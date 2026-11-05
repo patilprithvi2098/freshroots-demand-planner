@@ -58,6 +58,7 @@ export type OpenPurchaseOrderRow = {
   expected_date: string | null;
   status: string;
   source: string;
+  received_date: string | null;
   created_at: string;
 };
 export type CalendarRow = { year_month: string; year: number; month: number; is_festival_month: boolean; created_at: string };
@@ -143,6 +144,8 @@ export type RecommendationRow = {
   zoho_po_reference: string | null;
   zoho_ordered_at: string | null;
   zoho_error: string | null;
+  zoho_issued_at: string | null;
+  zoho_claimed_at: string | null;
   created_at: string;
 };
 export type AiCallRow = {

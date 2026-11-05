@@ -15,7 +15,7 @@ import * as review from "@/lib/services/review";
 import { RunBlockedError, startRun } from "@/lib/services/runs";
 import { checkFile, confirmUpload, previewUpload, type UploadPreview } from "@/lib/services/uploads";
 import { createAdminClient } from "@/lib/supabase/admin";
-import { placeZohoOrders, syncZohoStatuses, zohoClientFromEnv } from "@/lib/services/zohoOrders";
+import { placeZohoOrders, previewZohoOrders, syncZohoStatuses, zohoClientFromEnv, type OrdersPreview } from "@/lib/services/zohoOrders";
 
 export type ActionResult<T = undefined> = { ok: true; data: T; message?: string } | { ok: false; error: string; code?: string };
 
@@ -244,23 +244,40 @@ export async function saveConfigAction(params: unknown): Promise<ActionResult<{ 
 
 const ZOHO_NOT_CONFIGURED = "Zoho Inventory is not connected. Add the ZOHO_* settings (see scripts/zoho/connect.ts).";
 
+/** What "Create and issue" would send. Read-only. */
+export async function previewZohoOrdersAction(): Promise<ActionResult<OrdersPreview>> {
+  try {
+    await assertRole(["procurement"]);
+    return { ok: true, data: await previewZohoOrders(createAdminClient()) };
+  } catch (e) {
+    return fail(e);
+  }
+}
+
 /**
- * Create draft purchase orders in Zoho Inventory for released lines that have no PO yet.
- * Procurement cannot write recommendations under RLS, so this uses the service client after the role check.
+ * Procurement creates each distributor's PO in Zoho Inventory and issues it straight away (the brief:
+ * Raghav releases, procurement places the POs). Procurement cannot write recommendations under RLS, so
+ * this uses the service client after the role check.
  */
-export async function createZohoOrdersAction(): Promise<
+export async function createZohoOrdersAction(input: { confirmAboveCap?: boolean } = {}): Promise<
   ActionResult<{ created: number; reused: number; failed: number; problems: number }>
 > {
   try {
-    const s = await assertRole(["planner", "procurement"]);
+    const s = await assertRole(["procurement"]);
     const client = zohoClientFromEnv();
     if (!client) throw new Error(ZOHO_NOT_CONFIGURED);
-    const res = await placeZohoOrders(createAdminClient(), client, s.userId);
+    const res = await placeZohoOrders(createAdminClient(), client, s.userId, { confirmAboveCap: input.confirmAboveCap === true });
     revalidatePath("/procurement");
+    const issued = res.created.filter((c) => c.issued).length;
     const parts = [
-      res.created.length ? `Created ${res.created.length} draft PO${res.created.length === 1 ? "" : "s"} in Zoho Inventory (${res.created.map((c) => c.po_number).join(", ")}).` : "No new purchase orders.",
+      res.created.length
+        ? `Issued ${issued} purchase order${issued === 1 ? "" : "s"} in Zoho Inventory (${res.created.map((c) => c.po_number).join(", ")}).` +
+          (issued < res.created.length ? ` ${res.created.length - issued} created but not issued yet; they'll be issued on the next try.` : "")
+        : "No new purchase orders.",
+      res.issuedDrafts ? `Issued ${res.issuedDrafts} purchase order(s) left as drafts earlier.` : "",
+      res.busy ? `${res.busy} line(s) are being sent by someone else right now.` : "",
       res.problems.length ? `${res.problems.length} line(s) need a Zoho item or vendor link first.` : "",
-      res.failed.length ? `${res.failed.length} PO(s) failed: ${res.failed.map((f) => `${f.distributor_id}: ${f.error}`).join("; ")}` : "",
+      res.failed.length ? `${res.failed.length} order(s) not sent: ${res.failed.map((f) => `${f.distributor_id}: ${f.error}`).join("; ")}` : "",
     ].filter(Boolean);
     const data = { created: res.created.length, reused: res.reused, failed: res.failed.length, problems: res.problems.length };
     if (res.failed.length && !res.created.length) return { ok: false, error: parts.join(" ") };
@@ -278,7 +295,8 @@ export async function syncZohoAction(): Promise<ActionResult<{ checked: number; 
     if (!client) throw new Error(ZOHO_NOT_CONFIGURED);
     const res = await syncZohoStatuses(createAdminClient(), client);
     revalidatePath("/procurement");
-    return { ok: true, data: res, message: `Checked ${res.checked} PO(s) in Zoho; ${res.changed} line(s) changed status.` };
+    revalidatePath("/data");
+    return { ok: true, data: res, message: `Checked ${res.checked} purchase order(s) in Zoho; ${res.changed} line(s) changed status.` };
   } catch (e) {
     return fail(e);
   }

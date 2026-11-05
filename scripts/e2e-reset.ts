@@ -18,6 +18,8 @@ async function main() {
     db.from("backtest_results").delete().neq("id", none),
     db.from("historical_decisions").delete().neq("id", none),
     db.from("write_offs").delete().neq("id", none),
+    // Orders placed by the ordering test (Zoho mock) would count as stock on order in the next run.
+    db.from("open_purchase_orders").delete().neq("po_id", ""),
     db.from("rule_proposal_decisions").delete().neq("id", none),
     // Snapshots added by the loop test after the sample date (the sample stock is 2026-10-19).
     db.from("inventory_snapshots").delete().gt("as_of_date", "2026-10-19"),

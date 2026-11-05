@@ -14,11 +14,14 @@ export interface MockState {
     delivery_date: string;
     status: string;
     line_items: { item_id: string; quantity: number; rate?: number }[];
+    purchasereceives?: { receive_id: string; receive_number: string; date: string }[];
   }[];
   tokensIssued: number;
   /** Test hooks: fail the next N purchase-order creates with HTTP 500 / force a 429 once. */
   failNextCreates: number;
   rateLimitOnce: boolean;
+  /** Accept any vendor and item id (for browser tests against a database already linked to a real Zoho org). */
+  lenient?: boolean;
 }
 
 export const MOCK_ORG_ID = "60000000001";
@@ -81,9 +84,9 @@ export function handleZoho(state: MockState, method: string, rawUrl: string, hea
       state.failNextCreates--;
       return err(500, 9999, "Internal error");
     }
-    if (!state.contacts.some((c) => c.contact_id === data.vendor_id && c.contact_type === "vendor")) return err(400, 4001, "Invalid vendor");
+    if (!state.lenient && !state.contacts.some((c) => c.contact_id === data.vendor_id && c.contact_type === "vendor")) return err(400, 4001, "Invalid vendor");
     for (const l of data.line_items ?? []) {
-      if (!state.items.some((i) => i.item_id === l.item_id)) return err(400, 1002, `Item ${l.item_id} does not exist`);
+      if (!state.lenient && !state.items.some((i) => i.item_id === l.item_id)) return err(400, 1002, `Item ${l.item_id} does not exist`);
       if (!(l.quantity > 0)) return err(400, 1003, "Quantity must be greater than zero");
     }
     const po = {
@@ -95,12 +98,28 @@ export function handleZoho(state: MockState, method: string, rawUrl: string, hea
     state.purchaseorders.push(po);
     return ok({ purchaseorder: po });
   }
+  const issue = /^\/purchaseorders\/(\w+)\/status\/issued$/.exec(path);
+  if (issue && method === "POST") {
+    const po = state.purchaseorders.find((p) => p.purchaseorder_id === issue[1]);
+    if (!po) return err(404, 1004, "Purchase order not found");
+    if (po.status !== "draft") return err(400, 36023, "Only draft purchase orders can be issued");
+    po.status = "issued";
+    return ok({ message: "Purchase order has been marked as issued." });
+  }
   const m = /^\/purchaseorders\/(\w+)$/.exec(path);
   if (m && method === "GET") {
     const po = state.purchaseorders.find((p) => p.purchaseorder_id === m[1]);
     return po ? ok({ purchaseorder: po }) : err(404, 1004, "Purchase order not found");
   }
   return err(404, 5, "Invalid URL Passed");
+}
+
+/** Test hook: record a delivery against a PO, as procurement would in Zoho when goods arrive. */
+export function mockReceive(state: MockState, purchaseorderId: string, date: string, full = true) {
+  const po = state.purchaseorders.find((p) => p.purchaseorder_id === purchaseorderId);
+  if (!po) throw new Error(`No PO ${purchaseorderId}`);
+  po.purchasereceives = [...(po.purchasereceives ?? []), { receive_id: `R${Date.now()}`, receive_number: `PR-${po.purchaseorder_number}`, date }];
+  po.status = full ? "received" : "partially_received";
 }
 
 /** A fetch implementation backed by the mock, for tests. */

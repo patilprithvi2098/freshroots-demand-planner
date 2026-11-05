@@ -27,6 +27,11 @@ async function main() {
     const { error } = await db.from(table).delete().neq("id", NONE);
     if (error) throw new Error(`${table}: ${error.message}`);
   }
+  // Open POs (e.g. from ordering tests) would count as stock on order; the sample has none.
+  {
+    const { error } = await db.from("open_purchase_orders").delete().neq("po_id", "");
+    if (error) throw new Error(`open_purchase_orders: ${error.message}`);
+  }
   // Anything dated after the sample (2026-10-19 stock, sales to 2026-W42), e.g. from the loop browser test.
   for (const q of [db.from("inventory_snapshots").delete().gt("as_of_date", "2026-10-19"), db.from("weekly_sales").delete().gt("iso_week", "2026-W42")]) {
     const { error } = await q;
