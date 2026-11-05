@@ -29,6 +29,9 @@ Rules you must follow:
 - Be direct and specific to this SKU. No filler, no hedging phrases.
 - Return only valid JSON: {"rationale": string, "check_first": string}`;
 
+/** Sent with each request (not in the spec's system prompt) so answers fit the 300-token output cap. */
+export const LENGTH_LIMIT = 'Keep "rationale" under 60 words and "check_first" under 25 words.';
+
 export const rationaleSchema = z.object({
   rationale: z.string().trim().min(10).max(1200),
   check_first: z.string().trim().min(5).max(400),
@@ -142,7 +145,8 @@ async function attemptOnce(client: MessagesClient, context: unknown): Promise<{ 
       thinking: { type: "between_tools" },
       output_config: { effort: "low", format: zodOutputFormat(rationaleSchema) },
       system: SYSTEM_PROMPT,
-      messages: [{ role: "user", content: JSON.stringify(context) }],
+      // The spec caps output at 300 tokens; without a length limit the JSON can be cut off mid-string.
+      messages: [{ role: "user", content: `${JSON.stringify(context)}\n\n${LENGTH_LIMIT}` }],
     });
     const usage = {
       input_tokens: response.usage.input_tokens,
