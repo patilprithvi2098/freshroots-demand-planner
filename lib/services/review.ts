@@ -120,14 +120,25 @@ export async function bulkApprove(db: Db, actor: string, ids: string[]) {
   if (error) throw new Error(error.message);
   const eligible = (data ?? []).filter((r) => !r.is_exception && r.status === "pending" && !r.released_at);
   const decidedAt = new Date().toISOString();
+  // One update per distinct quantity (not per row), run in parallel: 257 lines took 25 s row by row.
+  const byQty = new Map<number, string[]>();
   for (const r of eligible) {
-    const { error: e } = await db
-      .from("recommendations")
-      .update({ status: "approved", final_qty: r.recommended_qty ?? 0, decided_by: actor, decided_at: decidedAt })
-      .eq("id", r.id)
-      .eq("is_exception", false);
-    if (e) throw new Error(e.message);
+    const q = r.recommended_qty ?? 0;
+    byQty.set(q, [...(byQty.get(q) ?? []), r.id]);
   }
+  const results = await Promise.all(
+    [...byQty].map(([qty, ids]) =>
+      db
+        .from("recommendations")
+        .update({ status: "approved", final_qty: qty, decided_by: actor, decided_at: decidedAt })
+        .in("id", ids)
+        .eq("is_exception", false)
+        .eq("status", "pending")
+        .is("released_at", null),
+    ),
+  );
+  const failed = results.find((r) => r.error);
+  if (failed?.error) throw new Error(failed.error.message);
   await audit(db, actor, "bulk_approve", "recommendations", null, { ids: eligible.map((r) => r.id) });
   return { approved: eligible.length, excluded: parsed.length - eligible.length };
 }

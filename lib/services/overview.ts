@@ -54,32 +54,39 @@ export function nextCycleDate(today: string): string {
 
 export async function loadPlanning(db: Db): Promise<PlanningData> {
   const today = todayIst();
-  const [config, fresh] = await Promise.all([getActiveConfig(db), getDataFreshness(db)]);
+  // Three rounds of parallel queries instead of a dozen one after another: each round trip to the
+  // database counts, and the page waits for all of them.
+  // Round 1: everything that depends on nothing else.
+  const [config, fresh, runRes, recentRes, calRes, skuC, distC, calC, poC] = await Promise.all([
+    getActiveConfig(db),
+    getDataFreshness(db),
+    db.from("runs").select("id, as_of_date, run_date, config_version, features, created_at").eq("status", "completed").order("run_date", { ascending: false }).limit(1).maybeSingle(),
+    db.from("runs").select("id, as_of_date, run_date, status").in("status", ["completed", "superseded"]).order("run_date", { ascending: false }).limit(5),
+    db.from("calendar").select("year_month, is_festival_month"),
+    db.from("skus").select("sku_id", { count: "exact", head: true }),
+    db.from("distributors").select("distributor_id", { count: "exact", head: true }),
+    db.from("calendar").select("year_month", { count: "exact", head: true }),
+    db.from("open_purchase_orders").select("po_id", { count: "exact", head: true }),
+  ]);
+  const runRow = runRes.data;
+  const recentRuns = recentRes.data ?? [];
+  const skuCount = skuC.count;
+  const distCount = distC.count;
+  const calCount = calC.count;
+  const poCount = poC.count;
   const windows = {
     low: { min: config.params.low_perishability.min_weeks, max: config.params.low_perishability.max_weeks },
     high: { min: config.params.high_perishability.min_weeks, max: config.params.high_perishability.max_weeks },
   };
+  const endWeek = fresh.latestSalesWeek;
+  const trendWeeks = endWeek ? weekWindow(endWeek, 16) : [];
 
-  const { data: runRow } = await db
-    .from("runs")
-    .select("id, as_of_date, run_date, config_version, features, created_at")
-    .eq("status", "completed")
-    .order("run_date", { ascending: false })
-    .limit(1)
-    .maybeSingle();
-
-  let rows: SkuRow[] = [];
-  if (runRow) {
-    const recs = await fetchAll((a, b) => db.from("recommendations").select("*").eq("run_id", runRow.id).order("rank").range(a, b));
-    const { data: recentRuns } = await db
-      .from("runs")
-      .select("id, as_of_date, run_date, status")
-      .in("status", ["completed", "superseded"])
-      .order("run_date", { ascending: false })
-      .limit(5);
-    const ids = (recentRuns ?? []).map((r) => r.id);
-    const decided = ids.length
-      ? await fetchAll((a, b) =>
+  // Round 2: this run's lines, recent decisions, and the 16-week demand trend.
+  const ids = recentRuns.map((r) => r.id);
+  const [recs, decided, sales] = await Promise.all([
+    runRow ? fetchAll((a, b) => db.from("recommendations").select("*").eq("run_id", runRow.id).order("rank").range(a, b)) : Promise.resolve([]),
+    runRow && ids.length
+      ? fetchAll((a, b) =>
           db
             .from("recommendations")
             .select("id, run_id, sku_id, sku_name, perishability, status, is_exception, demand_adj, recommended_qty, final_qty, override_reason_code")
@@ -88,16 +95,25 @@ export async function loadPlanning(db: Db): Promise<PlanningData> {
             .order("id")
             .range(a, b),
         )
-      : [];
-    const misfit = new Set(repeatedOverrides(overrideStats(recentRuns ?? [], decided), decided).map((r) => r.sku_id));
+      : Promise.resolve([]),
+    endWeek
+      ? fetchAll((a, b) =>
+          db.from("weekly_sales").select("iso_week, units_sold").gte("iso_week", trendWeeks[0]).lte("iso_week", endWeek).order("iso_week").range(a, b),
+        )
+      : Promise.resolve([] as { iso_week: string; units_sold: number }[]),
+  ]);
+
+  let rows: SkuRow[] = [];
+  if (runRow) {
+    const misfit = new Set(repeatedOverrides(overrideStats(recentRuns, decided), decided).map((r) => r.sku_id));
     // His own decisions on each SKU in earlier runs, for the "you usually…" hints on the Review list.
-    const runDate = new Map((recentRuns ?? []).map((r) => [r.id, r.run_date]));
+    const runDate = new Map(recentRuns.map((r) => [r.id, r.run_date]));
     const history = buildHistory(
       decided
         .filter((d) => d.run_id !== runRow.id)
         .map((d) => ({ ...d, run_date: runDate.get(d.run_id) ?? "" })),
     );
-    // Outcome loop, Retrieve: the last three measured results per SKU.
+    // Round 3: outcome loop, Retrieve: the last three measured results per SKU.
     const outcomes = await outcomeHistory(db, recs.map((r) => r.sku_id)).catch(() => new Map<string, PastOutcome[]>());
     rows = recs.map((r) => ({
       ...toSkuRow(r, windows, misfit.has(r.sku_id)),
@@ -107,18 +123,12 @@ export async function loadPlanning(db: Db): Promise<PlanningData> {
   }
 
   // Demand trend: total units per week over the last 16 weeks of uploaded sales.
-  const endWeek = fresh.latestSalesWeek;
   let demandTrend: PlanningData["demandTrend"] = [];
   if (endWeek) {
-    const weeks = weekWindow(endWeek, 16);
-    const sales = await fetchAll((a, b) =>
-      db.from("weekly_sales").select("iso_week, units_sold").gte("iso_week", weeks[0]).lte("iso_week", endWeek).order("iso_week").range(a, b),
-    );
-    const { data: cal } = await db.from("calendar").select("year_month, is_festival_month");
-    const festivalMonths = new Set((cal ?? []).filter((c) => c.is_festival_month).map((c) => c.year_month));
+    const festivalMonths = new Set((calRes.data ?? []).filter((c) => c.is_festival_month).map((c) => c.year_month));
     const totals = new Map<string, number>();
     for (const s of sales) totals.set(s.iso_week, (totals.get(s.iso_week) ?? 0) + s.units_sold);
-    demandTrend = weeks.map((w) => ({
+    demandTrend = trendWeeks.map((w) => ({
       iso_week: w,
       units: totals.get(w) ?? 0,
       festival: festivalMonths.has(mondayOfIsoWeek(w).slice(0, 7)),
@@ -126,12 +136,6 @@ export async function loadPlanning(db: Db): Promise<PlanningData> {
   }
 
   const inventoryAgeDays = fresh.latestInventoryDate ? daysBetween(fresh.latestInventoryDate, today) : null;
-  const [{ count: skuCount }, { count: distCount }, { count: calCount }, { count: poCount }] = await Promise.all([
-    db.from("skus").select("sku_id", { count: "exact", head: true }),
-    db.from("distributors").select("distributor_id", { count: "exact", head: true }),
-    db.from("calendar").select("year_month", { count: "exact", head: true }),
-    db.from("open_purchase_orders").select("po_id", { count: "exact", head: true }),
-  ]);
 
   const sources: DataSource[] = [
     {

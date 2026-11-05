@@ -20,6 +20,8 @@ export interface MockState {
   /** Test hooks: fail the next N purchase-order creates with HTTP 500 / force a 429 once. */
   failNextCreates: number;
   rateLimitOnce: boolean;
+  /** Test hook: fail the next N "mark as issued" calls with HTTP 500 (the PO stays a draft). */
+  failNextIssues?: number;
   /** Accept any vendor and item id (for browser tests against a database already linked to a real Zoho org). */
   lenient?: boolean;
 }
@@ -102,6 +104,10 @@ export function handleZoho(state: MockState, method: string, rawUrl: string, hea
   if (issue && method === "POST") {
     const po = state.purchaseorders.find((p) => p.purchaseorder_id === issue[1]);
     if (!po) return err(404, 1004, "Purchase order not found");
+    if (state.failNextIssues && state.failNextIssues > 0) {
+      state.failNextIssues--;
+      return err(500, 9999, "Internal error while issuing");
+    }
     if (po.status !== "draft") return err(400, 36023, "Only draft purchase orders can be issued");
     po.status = "issued";
     return ok({ message: "Purchase order has been marked as issued." });

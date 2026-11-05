@@ -380,3 +380,23 @@ ingestion must run as a background job, not inside the upload request.
 
 Tests named `FINDING:` pin the current behaviour behind findings 1–9. When a fix lands, the matching test
 fails on purpose; update it to assert the fixed behaviour.
+
+## Full database stress run (5 Nov 2026)
+
+`scripts/stress/db-stress.ts` drives the app's own services against the real database at full scale (400 SKUs, 1,200 distributors, 149,546 weekly sales rows) and the **local Zoho mock only**. It uploads, plans, writes Claude explanations, reviews, sends to procurement, creates and issues purchase orders with injected Zoho failures (a failed create, a failed issue, a rate limit) and two people clicking at once, syncs deliveries, measures outcomes, runs rule review and times the page loaders. It cleans up after itself; `npm run demo-reset -- --yes` restores the demo.
+
+| Check | Result |
+|---|---|
+| Planning, 400 SKUs | 3.3 s; 322 flagged, 65 need judgement |
+| Two runs at once | one ran, the other was refused (lock) |
+| Claude explanations | 65 of 65 written, 0 failed |
+| Bulk approve, 257 lines | **25 s → 3 s** after fix (one update per quantity instead of per row) |
+| Bulk approve on judgement lines | 0 approved, 65 excluded |
+| Change after release | refused |
+| Zoho ordering, 243 orders, 2 tabs at once, injected failures | every order created exactly once and issued; units match the preview; retry and third click sent nothing more |
+| Delivery sync | 152 of 243 came back received with dates |
+| Outcomes | 407 measured |
+| Rule review | proposal raised ("Lower the festival uplift") |
+| Page data (from a laptop to the Mumbai database) | Overview 2.1 s, Performance 0.5 s, Orders 0.2 s |
+
+Real Zoho was only read: the token works and every SKU and distributor matches an item and vendor there.
