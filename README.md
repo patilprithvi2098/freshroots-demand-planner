@@ -37,7 +37,11 @@ npm run demo-reset -- --yes
 
 ## How it fits together
 
-The components map (framework Deliverable 3). **Key:** 🟦 people · 🟩 AI · ⬜ data and systems · 🟥 human takes over
+The components map (framework Deliverable 3), including both feedback loops:
+
+![Components map: every actor and system across trigger, input, context, processing and output, with the two feedback loops below](docs/components-map.png)
+
+The same map as text. **Key:** 🟦 people · 🟩 AI · ⬜ data and systems · 🟥 human takes over
 
 | Actor / system | Trigger | Input | Context | Processing | Output |
 |---|---|---|---|---|---|
