@@ -11,6 +11,21 @@ within two full quarters of going live.
 - **Does the logic work:** [docs/stress-test.md](docs/stress-test.md) covers the training, test and actual data, plus the fixes applied.
 - **Live app:** https://freshroots-demand-planner.vercel.app (login details are in the submission, not in this repo).
 
+### Framework deliverables
+
+| Deliverable | Where |
+|---|---|
+| 1. Nine Checks, for all three areas | [docs/decision.md](docs/decision.md) |
+| 2. Five Pre-Build Decisions | [docs/decision.md](docs/decision.md#deliverable-2-the-five-pre-build-decisions) |
+| Build Requirements Brief (draft) | [docs/build-requirements.md](docs/build-requirements.md) |
+| 3. Components Map | [below](#how-it-fits-together) |
+| 4. Dashboard and motion design | [docs/screens.md](docs/screens.md) |
+| 5. Phased deployment plan | [docs/deployment-plan.md](docs/deployment-plan.md) |
+| 6. Master execution prompt | [docs/master-execution-prompt.md](docs/master-execution-prompt.md) |
+| Stress test and feedback loops | [docs/stress-test.md](docs/stress-test.md), [docs/feedback-loops.md](docs/feedback-loops.md) |
+
+Stage 0 of the framework was skipped by choice.
+
 ### For reviewers
 
 Restore the demo plan at any time (it clears runs and decisions, reloads the sample files, runs planning
@@ -22,21 +37,25 @@ npm run demo-reset -- --yes
 
 ## How it fits together
 
-| Lane | Trigger | Input | Context | Processing | Output |
-|---|---|---|---|---|---|
-| Raghav (planner) | Opens the Overview | | | | Approves, changes or rejects |
-| Scheduler (Phase 3) | Tuesday and Friday 06:00 IST | | | | |
-| SAP and Zoho | | Sales, **weekly stock snapshots, PO history with ordered and received dates** (CSV upload in Phases 1–2) | Festival calendar | | |
-| Rules engine (`lib/rules/`) | | | Lead times are loaded and shown to Claude but **not used by the rules yet** (a rule change for Raghav to agree) | Applies the five rules | Flagged SKUs, quantities, rule trace |
-| Claude Sonnet 5.5 (`lib/ai/`) | | | | Explains the exceptions only | Rationale + "check this first" per SKU, **up to 80 per run in queue order; the rest get the rule-based explanation** |
-| Database and web app | | | Past history and overrides | | Review queue, results stored |
-| Procurement | | | | | Places the PO in Zoho (released orders can be created as Zoho draft POs) |
-| Raghav as reviewer | | | | **Reviews every flagged SKU**: bulk-approves rule-governed ones, investigates exceptions | |
-| **Outcome tracker (Phase 3, new)** | 4 weeks after each run | Sales and stock since the run | | Compares each flag with what happened (stockout, write-off) | `outcomes` table → Performance page and the ₹28 lakh and agreement kill criteria |
+The components map (framework Deliverable 3). **Key:** 🟦 people · 🟩 AI · ⬜ data and systems · 🟥 human takes over
 
-Changes in **bold** come from the stress test ([docs/stress-test.md](docs/stress-test.md)): the backtest needs
-dated PO history to measure agreement correctly, a typical run has about 149 flagged SKUs but only about 21
-exceptions, festival weeks can exceed the 80-call AI cap, and outcomes need their own job.
+| Actor / system | Trigger | Input | Context | Processing | Output |
+|---|---|---|---|---|---|
+| 🟦 Raghav (planner) | Opens the Overview, twice a week | Uploads the SAP exports, runs planning | | | Sees the plan; sends approved lines to procurement |
+| ⬜ Daily job (Vercel Cron) | Every day at 03:00 UTC | | | Keeps the database awake, syncs Zoho status, measures outcomes | |
+| ⬜ Data page | | Checks each file, previews it, refuses duplicates | | | Saves valid rows, or lists errors by row number |
+| ⬜ SAP exports (CSV) | | Sales, weekly stock snapshots, SKUs, distributors, write-offs, past decisions | Festival calendar | | |
+| ⬜ Zoho Inventory API | | Order status and delivery dates | Dated PO history for the backtest and outcomes | | |
+| ⬜ Rules engine (`lib/rules/`) | | | Lead times are loaded and shown to Claude but not used by the rules (a change for Raghav to agree) | Applies the five rules; ranks by rupee exposure | Flag, quantity and rule trace for every SKU; exceptions marked |
+| 🟩 Claude Sonnet 5.5 (`lib/ai/`) | | | Past overrides and outcomes on that SKU | Explains exceptions only, up to 80 a run | Explanation and "check this first"; the rest get a rule-based explanation |
+| ⬜ Supabase Postgres | | | Past runs, overrides and outcomes | | Stores runs, decisions, outcomes and the audit log |
+| ⬜ Next.js app on Vercel | | | | | Overview, Review, SKU pop-up, Orders, Data, Performance, Rules |
+| 🟥 Raghav as reviewer | | | | Reviews every flagged SKU. **Must decide personally when** signals conflict, festival uplift and trend may double count, a perishable is paused in a festival month, more than 2 of 12 weeks are missing, a distributor's share shifts by over 15 points, or the SKU is new, short on history or dead stock | Approves, changes or rejects, with a reason for any change |
+| 🟥 Procurement | Lines arrive from Raghav | | | **Must tick to confirm when** a quantity is above 3× standard | Creates and issues the POs in Zoho |
+| ⬜ Outcome tracker | After each upload, and daily | Sales, stock and write-offs since the run | | Compares each decision with the next four weeks | Results on the Performance page and SKU pop-up; proposed rule changes for Raghav to accept |
+| 🟦 Deepa Nair | Checks Performance | | | | Watches the kill-criteria lights; alone decides whether to stop |
+
+**Not built:** scheduled Tuesday and Friday runs, and an automatic SAP feed. See [docs/build-requirements.md](docs/build-requirements.md).
 
 The AI never sets or changes a quantity. If it fails or the spend cap is hit, the queue shows
 "Rationale unavailable" and everything else still works.
@@ -48,7 +67,7 @@ The AI never sets or changes a quantity. If it fails or the spend cap is hit, th
 | **Overview** (home) | Planner | Where this cycle stands (fresh data → run → review → send), what is running low or overstocked, stock health for every SKU, total demand, and which data feeds the plan |
 | **Review** | Planner | Tabs: to decide, needs judgement, running low, too much stock, demand rising, decided. Approve in one click, bulk-approve the straightforward ones, send to procurement |
 | **SKU pop-up** | Planner | Opens from any SKU: one-line summary, suggested order, cover against the safe range, 16-week sales, Claude's explanation for judgement SKUs, the rule trace, and Approve / Change / Reject. ← → moves through the list |
-| **Orders** | Planner, procurement | Approved orders sent to procurement, with CSV export |
+| **Orders** | Planner, procurement | Approved orders sent to procurement, with CSV export. Procurement creates and issues them in Zoho; both roles see status and delivery dates |
 | **Data** | Planner | Upload the SAP exports (preview first), run planning, run history, which optional checks are on |
 | **Performance** | Planner, viewer | Accept and override rates, kill-criteria lights, link to the backtest |
 | **Rules** | Planner | Versioned rule parameters and the rules in plain language (the Excel fallback) |
@@ -58,11 +77,11 @@ Replace them with real photos by saving `<SKU_ID>.svg` (or change `SkuImage` to 
 
 ## SAP and Zoho
 
-Not connected directly. The brief says API access to SAP and Zoho is not confirmed, so Phases 1–2 use CSV
-exports uploaded on the Data page; no SAP or Zoho key is needed to run the app. Phase 3 replaces the uploads
-with an SAP export folder or SFTP drop (needs the IT team to schedule the export) and the Zoho Inventory API
-for open POs and lead times (needs an OAuth client ID, secret, refresh token and organisation ID from
-Freshroots' Zoho admin).
+**SAP is not connected directly.** The brief says API access isn't confirmed, so sales and stock arrive as CSV
+exports uploaded on the Data page. An automatic export folder or SFTP drop is not built and needs the IT team to
+schedule the export.
+
+**Zoho Inventory is connected for ordering and order status** (below). Other open POs still arrive by CSV.
 
 ### Ordering in Zoho Inventory (extension beyond the brief)
 
@@ -125,7 +144,7 @@ Passwords are passed through the `NEW_USER_PASSWORD` environment variable and ar
 | `AI_MONTHLY_SPEND_CAP_USD` | server | Default 20. When reached, runs continue without rationales |
 | `MAX_RUNS_PER_DAY` | server | Default 10 |
 | `NEXT_PUBLIC_SITE_URL` | browser | Public base URL of the app |
-| `CRON_SECRET` | server | Reserved for Phase 3 scheduled runs |
+| `CRON_SECRET` | server | Protects the daily job (keep-alive, Zoho status sync, outcomes) |
 
 ## Tests
 
@@ -179,8 +198,8 @@ switch it on; pushing that path needs a GitHub token with the `workflow` scope.
 
 ## Decisions and deviations from the spec
 
-- **Username and password sign-in** instead of email magic links, at the product owner's request. Only one
-  account (`raghav`, planner) exists for now; add procurement and viewer users with `npm run invite`.
+- **Username and password sign-in** instead of email magic links, at the product owner's request. The accounts
+  are `raghav` (planner) and `procurement`. Add a viewer account for Deepa with `npm run invite`.
 
 - **No `temperature: 0.2`.** Claude Sonnet 5.5 rejects non-default sampling parameters. The call uses
   thinking type `between_tools` and effort `low`, so the 300 output tokens go to the answer. Structured
@@ -200,5 +219,5 @@ switch it on; pushing that path needs a GitHub token with the `workflow` scope.
   viewer role has no table access under RLS.
 - **Two extra rule parameters** are configurable: `max_missing_weeks` (2) and `max_qty_multiple` (3).
 - **Deployment:** https://freshroots-demand-planner.vercel.app (Vercel, production).
-- **Phase 3** (scheduled runs, SFTP/Zoho ingestion, four-week outcome capture job) is not built. The
-  `outcomes` table and dashboard are ready for it; until then loss metrics show "No four-week outcomes recorded yet".
+- **Phase 3 is partly built.** The four-week outcome capture and Zoho ordering and status are built. Scheduled
+  runs, the SFTP feed, error monitoring and backups are not ([docs/build-requirements.md](docs/build-requirements.md)).
